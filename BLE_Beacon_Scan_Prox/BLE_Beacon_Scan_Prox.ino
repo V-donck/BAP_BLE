@@ -6,15 +6,25 @@
 #include "NimBLEEddystoneURL.h"
 #include "NimBLEEddystoneTLM.h"
 #include "NimBLEBeacon.h"
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <WiFiAP.h>
 
-#define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
+//#define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
 
 int scanTime = 5; //In seconds
 BLEScan *pBLEScan;
 
+const char *ssid = "yourAP";
+const char *password = "yourPassword";
+WiFiServer server(80);
+
+// Tasks
+TaskHandle_t Task1;
+TaskHandle_t Task2;
+
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
-
 
 
     /*** Only a reference to the advertised device is passed now
@@ -25,9 +35,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       //Serial.print(advertisedDevice->toString().c_str());
       if (advertisedDevice->haveName())
       {
-        //Serial.print("Device name: ");
-        //Serial.println(advertisedDevice->getName().c_str());
-        //Serial.println("");
         std::string namedevice = advertisedDevice->getName();
         std::string pr = "Prox";
         if(namedevice==pr){
@@ -57,131 +64,12 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       }
     return;
     }
-
-
-
-/*
-      if (advertisedDevice->haveServiceUUID())
-      {
-        BLEUUID devUUID = advertisedDevice->getServiceUUID();
-        Serial.print("Found ServiceUUID: ");
-        Serial.println(devUUID.toString().c_str());
-        Serial.println("");
-      }
-      else
-      {
-        if (advertisedDevice->haveManufacturerData() == true)
-        {
-          std::string strManufacturerData = advertisedDevice->getManufacturerData();
-
-          uint8_t cManufacturerData[100];
-          strManufacturerData.copy((char *)cManufacturerData, strManufacturerData.length(), 0);
-
-          if (strManufacturerData.length() == 25 && cManufacturerData[0] == 0x4C && cManufacturerData[1] == 0x00)
-          {
-            Serial.println("Found an iBeacon!");
-            BLEBeacon oBeacon = BLEBeacon();
-            oBeacon.setData(strManufacturerData);
-            Serial.printf("iBeacon Frame\n");
-            Serial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), oBeacon.getProximityUUID().toString().c_str(), oBeacon.getSignalPower());
-          }
-          else
-          {
-            Serial.println("Found another manufacturers beacon!");
-            Serial.printf("strManufacturerData: %d ", strManufacturerData.length());
-            for (int i = 0; i < strManufacturerData.length(); i++)
-            {
-              Serial.printf("[%X]", cManufacturerData[i]);
-            }
-            Serial.printf("\n");
-          }
-        }
-        return;
-      }
-      
-      if (advertisedDevice->haveManufacturerData())
-        {
-          std::string strManufacturerData = advertisedDevice->getManufacturerData();
-
-          uint8_t cManufacturerData[100];
-          strManufacturerData.copy((char *)cManufacturerData, strManufacturerData.length(), 0);
-/*
-          if (strManufacturerData.length() == 25 && cManufacturerData[0] == 0x4C && cManufacturerData[1] == 0x00)
-          {
-            Serial.println("Found an iBeacon!");
-            BLEBeacon oBeacon = BLEBeacon();
-            oBeacon.setData(strManufacturerData);
-            Serial.printf("iBeacon Frame\n");
-            Serial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), oBeacon.getProximityUUID().toString().c_str(), oBeacon.getSignalPower());
-          }
-          else
-          {
-            Serial.println("Found another manufacturers beacon!");
-            Serial.printf("strManufacturerData: %d ", strManufacturerData.length());
-            for (int i = 0; i < strManufacturerData.length(); i++)
-            {
-              Serial.printf("[%X]", cManufacturerData[i]);
-            }
-            Serial.printf("\n");
-          //}
-        }
-        return;
-   */   
-/*
-      BLEUUID eddyUUID = (uint16_t)0xfeaa;
-
-      if (advertisedDevice->getServiceUUID().equals(eddyUUID))
-      {
-        std::string serviceData = advertisedDevice->getServiceData(eddyUUID);
-        if (serviceData[0] == 0x10)
-        {
-          Serial.println("Found an EddystoneURL beacon!");
-          BLEEddystoneURL foundEddyURL = BLEEddystoneURL();
-
-          foundEddyURL.setData(serviceData);
-          std::string bareURL = foundEddyURL.getURL();
-          if (bareURL[0] == 0x00)
-          {
-            Serial.println("DATA-->");
-            for (int idx = 0; idx < serviceData.length(); idx++)
-            {
-              Serial.printf("0x%08X ", serviceData[idx]);
-            }
-            Serial.println("\nInvalid Data");
-            return;
-          }
-
-          Serial.printf("Found URL: %s\n", foundEddyURL.getURL().c_str());
-          Serial.printf("Decoded URL: %s\n", foundEddyURL.getDecodedURL().c_str());
-          Serial.printf("TX power %d\n", foundEddyURL.getPower());
-          Serial.println("\n");
-        }
-        else if (serviceData[0] == 0x20)
-        {
-          Serial.println("Found an EddystoneTLM beacon!");
-          BLEEddystoneTLM foundEddyURL = BLEEddystoneTLM();
-          foundEddyURL.setData(serviceData);
-
-          Serial.printf("Reported battery voltage: %dmV\n", foundEddyURL.getVolt());
-          Serial.printf("Reported temperature from TLM class: %.2fC\n", (double)foundEddyURL.getTemp());
-          int temp = (int)serviceData[5] + (int)(serviceData[4] << 8);
-          float calcTemp = temp / 256.0f;
-          Serial.printf("Reported temperature from data: %.2fC\n", calcTemp);
-          Serial.printf("Reported advertise count: %d\n", foundEddyURL.getCount());
-          Serial.printf("Reported time since last reboot: %ds\n", foundEddyURL.getTime());
-          Serial.println("\n");
-          Serial.print(foundEddyURL.toString().c_str());
-          Serial.println("\n");
-        }
-      }*/
-    //}
 };
 
-void setup()
-{
-  Serial.begin(115200);
-  Serial.println("Scanning...");
 
+void setup_ble(){
+  //BLE
+  Serial.println("Scanning...");
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
@@ -190,13 +78,136 @@ void setup()
   pBLEScan->setWindow(99); // less or equal setInterval value
 }
 
-void loop()
-{
-  // put your main code here, to run repeatedly:
-  BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
-  Serial.print("Devices found: ");
-  Serial.println(foundDevices.getCount());
-  Serial.println("Scan done!");
-  pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
-  delay(2000);
+void setup_wifi(){
+  Serial.println("setup------------------------------------------------------------------------------");
+  //WIFI
+  Serial.println("Configuring access point...");
+
+  WiFi.softAP(ssid, password);
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(myIP);
+  server.begin();
+
+  Serial.println("Server started");
 }
+
+void setup()
+{
+  Serial.begin(115200);
+
+    //create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
+  xTaskCreatePinnedToCore(
+                    Task1code,   /* Task function. */
+                    "Task1",     /* name of task. */
+                    10000,       /* Stack size of task */
+                    NULL,        /* parameter of the task */
+                    1,           /* priority of the task */
+                    &Task1,      /* Task handle to keep track of created task */
+                    0);          /* pin task to core 0 */                  
+  delay(500);  
+    //create a task that will be executed in the Task2code() function, with priority 1 and executed on core 1
+  xTaskCreatePinnedToCore(
+                    Task2code,   /* Task function. */
+                    "Task2",     /* name of task. */
+                    10000,       /* Stack size of task */
+                    NULL,        /* parameter of the task */
+                    1,           /* priority of the task */
+                    &Task2,      /* Task handle to keep track of created task */
+                    1);          /* pin task to core 1 */
+  delay(500); 
+}
+
+//Task1code: Handle BLE
+void Task1code( void * pvParameters ){
+  Serial.print("Task1 running on core ");
+  Serial.println(xPortGetCoreID());
+
+  setup_ble();
+
+  for(;;) {
+    // put your main code here, to run repeatedly:
+    BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
+    Serial.print("Devices found: ");
+    Serial.println(foundDevices.getCount());
+    Serial.println("Scan done!");
+    delay(2000);
+    pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
+  } 
+}
+
+
+//Task2code: Handle WiFi
+void Task2code( void * pvParameters ){
+  Serial.print("Task2 running on core ");
+  Serial.println(xPortGetCoreID());
+  setup_wifi();
+  for(;;) {
+   /* if (WiFi.status() != WL_CONNECTED) {
+      setup_wifi();
+    }
+
+    if (!mqttClient.connected()) {
+      // MQTT client is disconnected, connect
+      connectMQTT();
+    }
+
+    String message = "Test message"; 
+    publishMessage(message);
+*/
+    WiFiClient client = server.available();   // listen for incoming clients
+
+    if (client) {                             // if you get a client,
+      Serial.println("New Client.");           // print a message out the serial port
+      String currentLine = "";                // make a String to hold incoming data from the client
+      while (client.connected()) {            // loop while the client's connected
+        if (client.available()) {             // if there's bytes to read from the client,
+          char c = client.read();             // read a byte, then
+          Serial.write(c);                    // print it out the serial monitor
+          if (c == '\n') {                    // if the byte is a newline character
+  
+            // if the current line is blank, you got two newline characters in a row.
+            // that's the end of the client HTTP request, so send a response:
+            if (currentLine.length() == 0) {
+              // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+              // and a content-type so the client knows what's coming, then a blank line:
+              client.println("HTTP/1.1 200 OK");
+              client.println("Content-type:text/html");
+              client.println();
+  
+              // the content of the HTTP response follows the header:
+              client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
+              client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
+  
+              // The HTTP response ends with another blank line:
+              client.println();
+              // break out of the while loop:
+              break;
+            } else {    // if you got a newline, then clear currentLine:
+              currentLine = "";
+            }
+          } else if (c != '\r') {  // if you got anything else but a carriage return character,
+            currentLine += c;      // add it to the end of the currentLine
+          }
+  
+          // Check to see if the client request was "GET /H" or "GET /L":
+          if (currentLine.endsWith("GET /H")) {
+            digitalWrite(LED_BUILTIN, HIGH);               // GET /H turns the LED on
+          }
+          if (currentLine.endsWith("GET /L")) {
+            digitalWrite(LED_BUILTIN, LOW);                // GET /L turns the LED off
+          }
+        }
+      }
+      // close the connection:
+      client.stop();
+      Serial.println("Client Disconnected.");
+    }
+    
+    delay(5000);
+  }
+}
+
+
+
+void loop(){}
