@@ -15,9 +15,13 @@
 int scanTime = 5; //In seconds
 BLEScan *pBLEScan;
 
-const char *ssid = "yourAP";
-const char *password = "yourPassword";
+const char *ssid = "SmartFeeder";
+const char *password = "password";
 WiFiServer server(80);
+String lijst1[100];
+String lijst2[100];
+byte index1 = 0;
+byte index2=0;
 
 // Tasks
 TaskHandle_t Task1;
@@ -66,6 +70,26 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
     }
 };
 
+// check if id is already in lijst1
+boolean checkArray1(String id){
+  for(int i=0;i<index1;i++){
+    if(lijst1[i].equals(id)){
+      return true;
+    }
+  }
+  return false;
+}
+
+// check if id is already in lijst2
+boolean checkArray2(String id){
+  for(int i=0;i<index2;i++){
+    if(lijst2[i].equals(id)){
+      return true;
+    }
+  }
+  return false;
+}
+
 
 void setup_ble(){
   //BLE
@@ -74,7 +98,7 @@ void setup_ble(){
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
-  pBLEScan->setInterval(100);
+  pBLEScan->setInterval(1000); // here was 100
   pBLEScan->setWindow(99); // less or equal setInterval value
 }
 
@@ -143,18 +167,6 @@ void Task2code( void * pvParameters ){
   Serial.println(xPortGetCoreID());
   setup_wifi();
   for(;;) {
-   /* if (WiFi.status() != WL_CONNECTED) {
-      setup_wifi();
-    }
-
-    if (!mqttClient.connected()) {
-      // MQTT client is disconnected, connect
-      connectMQTT();
-    }
-
-    String message = "Test message"; 
-    publishMessage(message);
-*/
     WiFiClient client = server.available();   // listen for incoming clients
 
     if (client) {                             // if you get a client,
@@ -163,21 +175,45 @@ void Task2code( void * pvParameters ){
       while (client.connected()) {            // loop while the client's connected
         if (client.available()) {             // if there's bytes to read from the client,
           char c = client.read();             // read a byte, then
-          Serial.write(c);                    // print it out the serial monitor
+          //Serial.write(c);                    // print it out the serial monitor
           if (c == '\n') {                    // if the byte is a newline character
   
             // if the current line is blank, you got two newline characters in a row.
             // that's the end of the client HTTP request, so send a response:
             if (currentLine.length() == 0) {
+              String stringlist1= "";
+             
+              String stringlist2;
+              for(int i=0;i<index1;i++){
+                if(lijst1[i] != "0"){
+                  stringlist1 = stringlist1 + " \n" + lijst1[i];
+                }    
+              }
+              for(int i=0;i<index2;i++){
+                if(lijst2[i] != "0"){
+                  stringlist2 = stringlist2 + " \n" + lijst2[i]; 
+                }  
+              }
+              
               // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
               // and a content-type so the client knows what's coming, then a blank line:
               client.println("HTTP/1.1 200 OK");
               client.println("Content-type:text/html");
               client.println();
-  
               // the content of the HTTP response follows the header:
-              client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
-              client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
+              client.write("<style>{box-sizing: border-box;}.column {float: left;width: 50%;}.row:after { content: \"\";display: table;clear: both; }</style>");
+              //client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
+              //client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
+              //client.print("Enter a string: <input type=\"text\" name=\"input_string\"><a href=\"/A\">submit</a><br>");
+              client.write("<form method=GET>Add to Food 1: <input type=text name=AF1><input type=submit></form>");
+              client.write("<form method=GET>remove from Food 1: <input type=text name=RF1><input type=submit></form>");
+              client.write("<form method=GET>Add to Food 2: <input type=text name=AF2><input type=submit></form>");
+              client.write("<form method=GET>remove from Food 2: <input type=text name=RF2><input type=submit></form>");
+              client.write("<div class=\"row\"><div class=\"column\" style=\"background-color:#FFB695;\"><h2>Food 1</h2><p>");
+              client.print(stringlist1);
+              client.write("</p></div><div class=\"column\" style=\"background-color:#96D1CD;\"><h2>Food 2</h2><p>");
+              client.print(stringlist2);
+              client.print("</p></div></div>");
   
               // The HTTP response ends with another blank line:
               client.println();
@@ -189,13 +225,62 @@ void Task2code( void * pvParameters ){
           } else if (c != '\r') {  // if you got anything else but a carriage return character,
             currentLine += c;      // add it to the end of the currentLine
           }
-  
-          // Check to see if the client request was "GET /H" or "GET /L":
-          if (currentLine.endsWith("GET /H")) {
-            digitalWrite(LED_BUILTIN, HIGH);               // GET /H turns the LED on
-          }
-          if (currentLine.endsWith("GET /L")) {
-            digitalWrite(LED_BUILTIN, LOW);                // GET /L turns the LED off
+
+          if(currentLine.endsWith("HTTP/1.1")){
+            if(currentLine.startsWith("GET /?AF1")){
+              Serial.println("request gevonden!!");
+              Serial.println(currentLine);
+              String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
+              Serial.println("idlogger");
+              Serial.println(idlogger);
+              if (!checkArray1(idlogger)){
+                lijst1[index1]=idlogger;
+                index1++;
+                Serial.println("added to list1");
+                }
+              }
+
+         if(currentLine.startsWith("GET /?AF2")){
+              String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
+              Serial.println(idlogger);
+              if (!checkArray2(idlogger)){
+                lijst2[index2]=idlogger;
+                index2++;
+                Serial.println("added to list2");
+                }
+              }
+
+         if(currentLine.startsWith("GET /?RF1")){
+              String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
+              Serial.println(idlogger);
+              for(int i=0;i<index1;i++){
+                if(lijst1[i].equals(idlogger)){
+                  lijst1[i] = "0";
+                }
+              }
+         }
+
+         if(currentLine.startsWith("GET /?RF2")){
+              String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
+              Serial.println(idlogger);
+              for(int i=0;i<index2;i++){
+                if(lijst2[i].equals(idlogger)){
+                  lijst2[i] = "0";
+                }
+              }
+         }
+                    
+ Serial.println("lijst1:");
+              for(int i=0;i<index1;i++){
+                Serial.print(lijst1[i]);    
+                }
+                Serial.println("");
+
+                 Serial.println("lijst2:");
+              for(int i=0;i<index2;i++){
+                Serial.print(lijst2[i]);  
+              }
+              Serial.println(" ");
           }
         }
       }
@@ -209,5 +294,15 @@ void Task2code( void * pvParameters ){
 }
 
 
+// to do 
+/*
+ * melding als verwijder maar niet in lijst
+ * melding als al in andere lijst
+ * lijst toevoegen aan webpagina
+ * andere rommel eruit
+ * error bij 100 dieren
+ * lijst met 0 leegmaken
+ * miss lijst in eeprom zetten??? daarnaar kijken
+ */
 
 void loop(){}
