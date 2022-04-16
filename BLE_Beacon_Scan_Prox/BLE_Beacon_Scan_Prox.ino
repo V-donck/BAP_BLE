@@ -17,15 +17,26 @@ BLEScan *pBLEScan;
 
 const char *ssid = "SmartFeeder";
 const char *password = "password";
+const int LISTLENGTH = 100;
 WiFiServer server(80);
-String lijst1[100];
-String lijst2[100];
+String lijst1[LISTLENGTH];
+String lijst2[LISTLENGTH];
 byte index1 = 0;
 byte index2=0;
 
 // Tasks
 TaskHandle_t Task1;
 TaskHandle_t Task2;
+
+// check if id is already in lijst1
+boolean checkArray1(String id){
+  for(int i=0;i<index1;i++){
+    if(lijst1[i].equals(id)){
+      return true;
+    }
+  }
+  return false;
+}
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 {
@@ -62,6 +73,17 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
             sprintf(be,"%X",cManufacturerData[3]); 
             strcat(be,le);
             Serial.println(be);
+            // als id in lijst 1 -> voederbak1 open
+            if(checkArray1(be)){
+              // open voederbak1
+              // nu voor test led aan
+              digitalWrite(LED_BUILTIN, HIGH);
+              Serial.println("voederbak1 open!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+              
+            }
+            //if(checkArray2(be)){
+              //open voederbak2
+            //}
         
           }
         }
@@ -70,15 +92,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
     }
 };
 
-// check if id is already in lijst1
-boolean checkArray1(String id){
-  for(int i=0;i<index1;i++){
-    if(lijst1[i].equals(id)){
-      return true;
-    }
-  }
-  return false;
-}
+
 
 // check if id is already in lijst2
 boolean checkArray2(String id){
@@ -89,6 +103,17 @@ boolean checkArray2(String id){
   }
   return false;
 }
+
+boolean checkHex(String s){
+  for(int i = 0;i<s.length();i++){
+    char ch = s[i];
+    if((ch<'0' || ch >'9') && (ch<'A' ||ch>'F')){
+      return false;
+    }
+  }
+  return true;
+}
+
 
 
 void setup_ble(){
@@ -144,6 +169,8 @@ void setup()
 
 //Task1code: Handle BLE
 void Task1code( void * pvParameters ){
+  // here 
+  pinMode(LED_BUILTIN,OUTPUT);
   Serial.print("Task1 running on core ");
   Serial.println(xPortGetCoreID());
 
@@ -204,7 +231,7 @@ void Task2code( void * pvParameters ){
               client.write("<style>{box-sizing: border-box;}.column {float: left;width: 50%;}.row:after { content: \"\";display: table;clear: both; }</style>");
               //client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
               //client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
-              //client.print("Enter a string: <input type=\"text\" name=\"input_string\"><a href=\"/A\">submit</a><br>");
+
               client.write("<form method=GET>Add to Food 1: <input type=text name=AF1><input type=submit></form>");
               client.write("<form method=GET>remove from Food 1: <input type=text name=RF1><input type=submit></form>");
               client.write("<form method=GET>Add to Food 2: <input type=text name=AF2><input type=submit></form>");
@@ -214,62 +241,158 @@ void Task2code( void * pvParameters ){
               client.write("</p></div><div class=\"column\" style=\"background-color:#96D1CD;\"><h2>Food 2</h2><p>");
               client.print(stringlist2);
               client.print("</p></div></div>");
+
+              Serial.println("einde normal request");
   
               // The HTTP response ends with another blank line:
-              client.println();
+              //client.println();// here was not comment
               // break out of the while loop:
-              break;
+             // break;// here was break
             } else {    // if you got a newline, then clear currentLine:
               currentLine = "";
             }
           } else if (c != '\r') {  // if you got anything else but a carriage return character,
             currentLine += c;      // add it to the end of the currentLine
+          }else if (c == '\r'){
+            currentLine = "";
           }
-
+          
           if(currentLine.endsWith("HTTP/1.1")){
             if(currentLine.startsWith("GET /?AF1")){
-              Serial.println("request gevonden!!");
-              Serial.println(currentLine);
-              String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
-              Serial.println("idlogger");
-              Serial.println(idlogger);
-              if (!checkArray1(idlogger)){
-                lijst1[index1]=idlogger;
-                index1++;
-                Serial.println("added to list1");
+              if(index1<LISTLENGTH-1){
+                Serial.println(currentLine);
+                String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
+                Serial.println("idlogger");
+                idlogger.toUpperCase();
+                if(checkHex(idlogger) && idlogger.length()== 4){
+                  Serial.println(idlogger);
+                  if (!checkArray1(idlogger)){
+                    lijst1[index1]=idlogger;
+                    index1++;
+                    Serial.println("added to list1");
+                  }
+                  else{
+                    client.println("<script>alert(\"deze id zit al in deze lijst\");</script>");
+                  }
+                  if (checkArray2(idlogger)){
+                    client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
+                  }
+                }
+                else{
+                  client.print("<script>alert(\"deze id is niet juist\");</script>");
                 }
               }
+              else{
+                client.print("<script>alert(\"Er zitten te veel id's in deze lijst\");</script>");
+              }
+            }
 
-         if(currentLine.startsWith("GET /?AF2")){
-              String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
-              Serial.println(idlogger);
+        if(currentLine.startsWith("GET /?AF2")){
+          if(index2<LISTLENGTH-1){
+            String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
+            idlogger.toUpperCase();
+            Serial.println(idlogger);
+            if(checkHex(idlogger) && idlogger.length()== 4){
               if (!checkArray2(idlogger)){
                 lijst2[index2]=idlogger;
                 index2++;
                 Serial.println("added to list2");
-                }
               }
-
+              else{
+                client.print("<script>alert(\"deze id zit al in deze lijst\");</script>");
+              }
+              if (checkArray1(idlogger)){
+                client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
+              }
+            }
+            else{
+              client.print("<script>alert(\"deze id is niet juist\");</script>");
+            } 
+          }
+          else{
+            client.print("<script>alert(\"Er zitten te veel id's in deze lijst\");</script>");
+          }
+        }
+              
+         boolean inlist= false;
+         boolean removeF = false;
          if(currentLine.startsWith("GET /?RF1")){
-              String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
-              Serial.println(idlogger);
-              for(int i=0;i<index1;i++){
-                if(lijst1[i].equals(idlogger)){
-                  lijst1[i] = "0";
-                }
-              }
+          removeF = true;
+          String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
+          idlogger.toUpperCase();
+          Serial.println(idlogger);
+          if(checkHex(idlogger) && idlogger.length()== 4){              
+           for(int i=0;i<index1;i++){
+            if(lijst1[i].equals(idlogger)){
+             lijst1[i] = "0";
+             inlist=true;
+            }
+           }
+          }
+          else{
+           client.print("<script>alert(\"deze id is niet juist\");</script>");
+          } 
          }
 
          if(currentLine.startsWith("GET /?RF2")){
+              removeF = true;
               String idlogger = currentLine.substring(currentLine.indexOf('=')+1,currentLine.indexOf(' ',currentLine.indexOf('=')));
+              idlogger.toUpperCase();
               Serial.println(idlogger);
+             if(checkHex(idlogger) && idlogger.length()== 4){
               for(int i=0;i<index2;i++){
                 if(lijst2[i].equals(idlogger)){
                   lijst2[i] = "0";
+                  inlist=true;
                 }
               }
+             }
+             else{
+              client.print("<script>alert(\"deze id is niet juist\");</script>");
+             } 
          }
-                    
+
+         // warning message that id is not in list
+         if (!inlist & removeF){
+            client.print("<script>alert(\"deze id zit niet in deze lijst\");</script>");
+          }
+
+
+        
+// remove zeros in list
+        if(index1>LISTLENGTH-2){
+          int newindex;
+          Serial.println("removezeros");
+
+           Serial.println("lijst1:");
+              for(int i=0;i<index1;i++){
+                Serial.print(lijst1[i]);    
+                }
+                Serial.println("");
+          newindex = 0;
+          for(int i=0;i<index1;i++){
+            lijst1[newindex]=lijst1[i];
+            if(!lijst1[i].equals("0")){
+              newindex++;
+            }
+          }
+          index1=newindex;
+        }
+
+        if(index2>LISTLENGTH-2){
+          int newindex;
+          newindex = 0;
+          for(int i=0;i<index2;i++){
+            lijst2[newindex]=lijst2[i];
+            if(!lijst2[i].equals("0")){
+              newindex++;
+            }
+          }
+          index2=newindex;
+        }
+
+         
+         // print in serialmonitor           
  Serial.println("lijst1:");
               for(int i=0;i<index1;i++){
                 Serial.print(lijst1[i]);    
@@ -282,6 +405,18 @@ void Task2code( void * pvParameters ){
               }
               Serial.println(" ");
           }
+
+          
+            
+        if (c == '\n') {// if the byte is a newline character
+          // if the current line is blank, you got two newline characters in a row.
+          // that's the end of the client HTTP request, so send a response: and this is the end
+          if (currentLine.length() == 0) {
+            client.println();
+            break;
+          }
+        }
+          
         }
       }
       // close the connection:
@@ -289,20 +424,22 @@ void Task2code( void * pvParameters ){
       Serial.println("Client Disconnected.");
     }
     
-    delay(5000);
+    delay(2000); //here was 5000
   }
 }
 
 
 // to do 
 /*
- * melding als verwijder maar niet in lijst
+ * melding als verwijder maar niet in lijst -> nu komen de eerste 2 lijnen er bij op die nog bij de header horen, .write werkt niet
  * melding als al in andere lijst
- * lijst toevoegen aan webpagina
+ * VV               lijst toevoegen aan webpagina
  * andere rommel eruit
- * error bij 100 dieren
- * lijst met 0 leegmaken
+ * VV          error bij 100 dieren
+ * VV error bij foute naam
+ * VV            lijst met 0 leegmaken
  * miss lijst in eeprom zetten??? daarnaar kijken
+ * VV      kleine letters automatisch veranderen naar hoofdletters bij intypen
  */
 
 void loop(){}
