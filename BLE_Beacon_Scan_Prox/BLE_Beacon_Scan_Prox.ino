@@ -3,8 +3,8 @@
 
 #include <NimBLEDevice.h>
 #include <NimBLEAdvertisedDevice.h>
-#include "NimBLEEddystoneURL.h"
-#include "NimBLEEddystoneTLM.h"
+//#include "NimBLEEddystoneURL.h"
+//#include "NimBLEEddystoneTLM.h"
 #include "NimBLEBeacon.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -18,6 +18,7 @@ BLEScan *pBLEScan;
 
 const char *ssid = "SmartFeeder";
 const char *password = "password";
+const int threshold = -70;
 const int LISTLENGTH = 100;
 WiFiServer server(80);
 uint16_t lijst1[LISTLENGTH];
@@ -28,6 +29,8 @@ Servo servo1;
 Servo servo2;
 int closeFood = 0;
 int openFood = 180;
+boolean food1Open=false;
+boolean food2Open=false;
 
 // Tasks
 TaskHandle_t Task1;
@@ -53,48 +56,60 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       if (advertisedDevice->haveName())
       {
         std::string namedevice = advertisedDevice->getName();
-        std::string pr = "Prox";
-        if (namedevice == pr) {
-          Serial.print("Device name: ");
-          Serial.println(advertisedDevice->getName().c_str());
-          Serial.println("");
-          Serial.println("found Prox!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-          Serial.println("");
-          Serial.println("");
-          if (advertisedDevice->haveManufacturerData())
-          {
-            std::string strManufacturerData = advertisedDevice->getManufacturerData();
-            uint8_t cManufacturerData[20];
-            char be[8];
-            char le[4];
-            strManufacturerData.copy((char *)cManufacturerData, strManufacturerData.length(), 0);
-            Serial.printf("strManufacturerData: %d ", strManufacturerData.length());
-            Serial.printf("\n");
-            Serial.println(cManufacturerData[2]);
-            sprintf(le, "%X", cManufacturerData[2]);
-            sprintf(be, "%X", cManufacturerData[3]);
-            strcat(be, le);
-            Serial.println(be);
-            uint16_t receivedId;
-            char * pEnd;
-            receivedId = strtol(be, &pEnd, 16);
-            Serial.println(receivedId);
-            // als id in lijst 1 -> voederbak1 open
-            if (checkArray1(receivedId)) {
-              // open voederbak1
-              // nu voor test led aan
-              digitalWrite(LED_BUILTIN, HIGH);
-              Serial.println("voederbak1 open!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-              servo1.write(openFood);
+        int RSSi = advertisedDevice->getRSSI();
+        if (RSSi>=threshold){
+          std::string pr = "Prox";
+          if (namedevice == pr) {
+            Serial.print("Device name: ");
+            Serial.println(advertisedDevice->getName().c_str());
+            Serial.println("");
+            Serial.println("found Prox!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            Serial.println("");
+            Serial.println("");
+            Serial.println(RSSi);
+            Serial.println("rrsi");
+            if (advertisedDevice->haveManufacturerData())
+            {
+              std::string strManufacturerData = advertisedDevice->getManufacturerData();
+              uint8_t cManufacturerData[20];
+              char be[8];
+              char le[4];
+              strManufacturerData.copy((char *)cManufacturerData, strManufacturerData.length(), 0);
+              Serial.printf("strManufacturerData: %d ", strManufacturerData.length());
+              Serial.printf("\n");
+              Serial.println(cManufacturerData[2]);
+              sprintf(le, "%X", cManufacturerData[2]);
+              sprintf(be, "%X", cManufacturerData[3]);
+              strcat(be, le);
+              Serial.println(be);
+              uint16_t receivedId;
+              char * pEnd;
+              receivedId = strtol(be, &pEnd, 16);
+              Serial.println(receivedId);
+              // als id in lijst 1 -> voederbak1 open
+              if (checkArray1(receivedId)) {
+                // open voederbak1
+                // nu voor test led aan
+                digitalWrite(LED_BUILTIN, HIGH);
+                Serial.println("voederbak1 open!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                //servo1.write(openFood);
+                food1Open=true;
+              }
+              else{
+                //servo1.write(closeFood);
+                Serial.println("close food1");
+                digitalWrite(LED_BUILTIN, LOW);
+              }
+              if(checkArray2(receivedId)){
+                Serial.println("voederbak2 open!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                food2Open = true;
+              }
+  
             }
-            else{
-              servo1.write(closeFood);
-            }
-            //if(checkArray2(be)){
-            //open voederbak2
-            //}
-
           }
+        }
+        else{
+          Serial.println("RSSI is te laag, te ver weg");
         }
       }
       return;
@@ -170,6 +185,33 @@ void Task1code( void * pvParameters ) {
     Serial.print("Devices found: ");
     Serial.println(foundDevices.getCount());
     Serial.println("Scan done!");
+
+    // if one of them, then open it, otherwise close both
+    if (!(food1Open && food2Open)){
+      Serial.println("niet allebei open");
+      if (food1Open){
+        servo1.write(openFood);
+        servo2.write(closeFood);
+        Serial.println("food1 open");
+      }
+      else if(food2Open){
+        servo2.write(openFood);
+        servo1.write(closeFood);
+        Serial.println("food2 open");
+      }
+      else{
+        Serial.println("allebei gesloten");
+        servo1.write(closeFood);
+        servo2.write(closeFood);
+      }
+    }
+    else{
+      Serial.println("allebei moeten open, dus allebei gesloten");
+      servo1.write(closeFood);
+      servo2.write(closeFood);
+    }
+    food1Open=false;
+    food2Open=false;
     delay(2000);
     pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
   }
@@ -419,7 +461,6 @@ void Task2code( void * pvParameters ) {
               break;
             }
           }
-
         }
       }
       // close the connection:
@@ -477,6 +518,7 @@ boolean checkId(String s) {
    VV      kleine letters automatisch veranderen naar hoofdletters bij intypen
    kijken of int die ingetyped is niet te groot is
    bij 2 voederbakken geen enkele open
+   VVVthreshold
 */
 
 void loop() {}
