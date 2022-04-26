@@ -3,8 +3,6 @@
 
 #include <NimBLEDevice.h>
 #include <NimBLEAdvertisedDevice.h>
-//#include "NimBLEEddystoneURL.h"
-//#include "NimBLEEddystoneTLM.h"
 #include "NimBLEBeacon.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -23,14 +21,18 @@ const int LISTLENGTH = 100;
 WiFiServer server(80);
 uint16_t lijst1[LISTLENGTH];
 uint16_t lijst2[LISTLENGTH];
-byte index1 = 0;
-byte index2 = 0;
+int index1 = 0;
+int index2 = 0;
 Servo servo1;
 Servo servo2;
 int closeFood = 0;
 int openFood = 180;
 boolean food1Open = false;
 boolean food2Open = false;
+boolean notFood1 = false;
+boolean notFood2 = false;
+boolean allowAllFood1 = false;
+boolean allowAllFood2 = false;
 
 // Tasks
 TaskHandle_t Task1;
@@ -41,6 +43,7 @@ TaskHandle_t Task2;
 boolean checkArray(uint16_t id, int nummer);
 boolean checkId(String idlogger);
 boolean checkThreshold(String threshold);
+void removeZeros(byte nummer);
 
 
 
@@ -86,30 +89,20 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
               char * pEnd;
               receivedId = strtol(be, &pEnd, 16);
               Serial.println(receivedId);
-              // als id in lijst 1 -> voederbak1 open
-              if (checkArray(receivedId,1)) {
-                // open voederbak1
-                // nu voor test led aan
-                digitalWrite(LED_BUILTIN, HIGH);
-                Serial.println("voederbak1 open!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-                //servo1.write(openFood);
+              if (checkArray(receivedId, 1)) {
                 food1Open = true;
               }
               else {
-                //servo1.write(closeFood);
-                Serial.println("close food1");
-                digitalWrite(LED_BUILTIN, LOW);
+                notFood1 = true;
               }
-              if (checkArray(receivedId,2)) {
-                Serial.println("voederbak2 open!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+              if (checkArray(receivedId, 2)) {
                 food2Open = true;
               }
-
+              else {
+                notFood2 = true;
+              }
             }
           }
-        }
-        else {
-          Serial.println("RSSI is te laag, te ver weg");
         }
       }
       return;
@@ -186,35 +179,89 @@ void Task1code( void * pvParameters ) {
     Serial.println(foundDevices.getCount());
     Serial.println("Scan done!");
 
-    // if one of them, then open it, otherwise close both
-    if (!(food1Open && food2Open)) {
-      Serial.println("niet allebei open");
-      if (food1Open) {
+    if (!(allowAllFood1 | allowAllFood2)) {// if no allowall
+
+      // if one of them, then open it, otherwise close both
+      if (!(food1Open && food2Open)) {
+        if (food1Open) {
+          servo1.write(openFood);
+          servo2.write(closeFood);
+          Serial.println("food1 open");
+        }
+        else if (food2Open) {
+          servo2.write(openFood);
+          servo1.write(closeFood);
+          Serial.println("food2 open");
+        }
+        else {
+          Serial.println("allebei gesloten");
+          servo1.write(closeFood);
+          servo2.write(closeFood);
+        }
+      }
+      else {
+        Serial.println("allebei moeten open, dus allebei gesloten");
+        servo1.write(closeFood);
+        servo2.write(closeFood);
+      }
+    }
+    else if (allowAllFood1 & allowAllFood2) { // both all allowed
+      if (food1Open | food2Open | notFood1 | notFood2) { // animal in the neighborhood
+        servo1.write(openFood);
+        servo2.write(openFood);
+        Serial.println("food1 open");
+        Serial.println("food2 open");
+        Serial.println("both");
+
+      }
+      else { // no animalin the neighborhood
+        servo1.write(closeFood);
+        servo2.write(closeFood);
+        Serial.println("closed no animal in the neighborhood");
+      }
+    }
+    else if (allowAllFood1) { // Food 1 allowed for all
+      if (food2Open & !notFood2) { // only food2
+        servo1.write(closeFood);
+        servo2.write(openFood);
+        Serial.println("open 2, terwijl 1 voor iedereen mag, maar enkel een food2 in de buurt");
+      }
+      else if (food2Open | !(food1Open | notFood1)) { //there is an animal that must have food2 or no animal in the neighborhood
+        servo1.write(closeFood);
+        servo2.write(closeFood);
+        Serial.println("allebei gesloten  there is an animal that must have food2 or no animal in the neighborhood");
+      }
+      else { // only animals in Food1 or in no list
         servo1.write(openFood);
         servo2.write(closeFood);
         Serial.println("food1 open");
       }
-      else if (food2Open) {
-        servo2.write(openFood);
-        servo1.write(closeFood);
-        Serial.println("food2 open");
+    }
+    else if (allowAllFood2) { // Food 2 allowed for all
+      if (food1Open & !notFood1) { // only Food1
+        servo1.write(openFood);
+        servo2.write(closeFood);
+        Serial.println("food1 open, terwijl 2 voor iedereen openstaat, maar enkel animals van food1 aanwezig");
       }
-      else {
-        Serial.println("allebei gesloten");
+      if (food1Open | !(food2Open | notFood2)) { //there is an animal that must have food1 or no animal in the neighborhood
         servo1.write(closeFood);
         servo2.write(closeFood);
+        Serial.println("allebei gesloten there is an animal that must have food1 or no animal in the neighborhood ");
       }
-    }
-    else {
-      Serial.println("allebei moeten open, dus allebei gesloten");
-      servo1.write(closeFood);
-      servo2.write(closeFood);
+      else { // only animals in food2 or in no list
+        servo1.write(closeFood);
+        servo2.write(openFood);
+        Serial.println("food2 open");
+      }
     }
     food1Open = false;
     food2Open = false;
+    notFood1 = false;
+    notFood2 = false;
     delay(2000);
     pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
   }
+
 }
 
 //laten zien hoe de pointer kan werken
@@ -272,8 +319,8 @@ void Task2code( void * pvParameters ) {
   //a infinite for loop that creates the webserver
   for (;;) {
     WiFiClient client = server.available();   // listen for incoming clients
-    WiFiClient *clientptr;
-    clientptr = &client;
+    //WiFiClient *clientptr; // niet nodig
+    //clientptr = &client;// niet meer nodig
     if (client) {                             // if you get a client,
       Serial.println("New Client.");           // print a message out the serial port
       String currentLine = "";                // make a String to hold incoming data from the client
@@ -285,44 +332,127 @@ void Task2code( void * pvParameters ) {
             // if the current line is blank, you got two newline characters in a row.
             // that's the end of the client HTTP request, so send a response:
             if (currentLine.length() == 0) {
-              String stringlist1 = "";
-              String stringlist2;
-              for (int i = 0; i < index1; i++) {
-                if (lijst1[i] != 0) {
-                  stringlist1 = stringlist1 + " \n" + lijst1[i];
-                }
-              }
-              for (int i = 0; i < index2; i++) {
-                if (lijst2[i] != 0) {
-                  stringlist2 = stringlist2 + " \n" + lijst2[i];
-                }
-              }
-
-
               // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
               // and a content-type so the client knows what's coming, then a blank line:
-              if (!badInputError) {
+              if (!badInputError) {//if popup warning, the header isn't needed
                 client.println("HTTP/1.1 200 OK");
                 client.println("Content-type:text/html");
               }
               client.println();
               // the content of the HTTP response follows the header:
-              client.write("<style>{box-sizing: border-box;}.column {float: left;width: 50%;}.row:after { content: \"\";display: table;clear: both; }</style>");
+              client.write("<style>.button {"
+                           "border: none;"
+                           "color: white;"
+                           "padding: 15px 32px;"
+                           "text-align: center;"
+                           "text-decoration: none;"
+                           "display: inline-block;"
+                           "font-size: 16px;"
+                           "margin: 4px 2px;"
+                           "cursor: pointer;"
+                           "}"
+                           ".submitbutton {"
+                           "border: none;"
+                           "color: white;"
+                           "padding: 10px 20px;"
+                           "text-align: center;"
+                           "text-decoration: none;"
+                           "display: inline-block;"
+                           "font-size: 10px;"
+                           "margin: 4px 2px;"
+                           "cursor: pointer;"
+                           "}"
+
+                           ".button1 {background-color: #4CAF50;} /* Green */"
+                           ".button2 {background-color: #008CBA;} /* Blue */"
+                           "{box-sizing: border-box;}"
+                           ".column {float: left;width: 50%;}"
+                           ".row:after { content: \"\";display: table;clear: both; }"
+                           "</style>");
               //client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
               //client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
 
-              client.write("<form method=GET>Add to Food 1: <input type=text name=AF1><input type=submit></form>");
-              client.write("<form method=GET>remove from Food 1: <input type=text name=RF1><input type=submit></form>");
-              client.write("<form method=GET>Add to Food 2: <input type=text name=AF2><input type=submit></form>");
-              client.write("<form method=GET>remove from Food 2: <input type=text name=RF2><input type=submit></form>");
-              client.write("<div class=\"row\"><div class=\"column\" style=\"background-color:#FFB695;\"><h2>Food 1</h2><p>");
-              client.print(stringlist1);
-              client.write("</p></div><div class=\"column\" style=\"background-color:#96D1CD;\"><h2>Food 2</h2><p>");
-              client.print(stringlist2);
+              //fields for filling in id of animals to add or remove
+              client.write("<form action=/form method=GET>Add to Food 1: <input type=text name=AF1><input type=submit class=\"submitbutton button1\"></form>");
+              client.write("<form action=/form method=GET>remove from Food 1: <input type=text name=RF1><input type=submit class=\"submitbutton button1\"></form>");
+              client.write("<form action=/form method=GET>Add to Food 2: <input type=text name=AF2><input type=submit class=\"submitbutton button2\"></form>");
+              client.write("<form action=/form method=GET>remove from Food 2: <input type=text name=RF2><input type=submit class=\"submitbutton button2\"></form>");
+
+//table with all current id's
+              client.write("<div class=\"row\"><div class=\"column\" style=\"background-color:#FFB695;\"><h2>Food 1</h2>");
+              if (allowAllFood1) {
+                client.write("<p> (all allowed");
+                if (!allowAllFood2) {
+                  client.write(" exept the animals that are in Food2)</p><br>");
+                }
+                else {
+                  client.write(")</p><br>");
+                }
+              }
+              client.write("<p>");
+              for (int i = 0; i < index1; i++) {
+                if (lijst1[i] != 0) {
+                  client.print(String(lijst1[i]) + " \n");
+                }
+              }
+
+              client.write("</p></div><div class=\"column\" style=\"background-color:#96D1CD;\"><h2>Food 2</h2>");
+              if (allowAllFood2) {
+                client.write("<p> (all allowed");
+                if (!allowAllFood1) {
+                  client.write("exept the animals that are in Food1)</p><br>");
+                }
+                else {
+                  client.write(")</p><br>");
+                }
+              }
+              client.write("<p>");
+              for (int i = 0; i < index2; i++) {
+                if (lijst2[i] != 0) {
+                  client.print(String(lijst2[i]) + " \n");
+                }
+              }
               client.print("</p></div></div>");
-              client.write("<form method=GET>set threshold: <input type=text name=ST><input type=submit></form>");
+              //field for setting threshold
+              client.write("<form action=/form method=GET>set threshold: <input type=text name=ST><input type=submit></form>");
+              client.println(" <br>");
               client.print("current threshold : ");
               client.print(String(threshold));
+//buttons for clearing list and allowing all animals to 1 list.
+              client.println("<p><a href=\"/form/CF1\"><button class=\"button button1\">Clear Food1</button></a></p>");
+
+              if (allowAllFood1) {
+                client.write("<p><a href=\"/form/AAF1\"><button class=\"button button1\">do not allow anymore all to food1 exept the animals in food2</button></a></p>");
+              }
+              else {
+                client.write("<p><a href=\"/form/AAF1\"><button class=\"button button1\">allow all to food1 exept the animals in food2</button></a></p>");
+              }
+              client.println("<p><a href=\"/form/CF2\"><button class=\"button button2\">Clear Food2</button></a></p>");
+              if (allowAllFood2) {
+                client.write("<p><a href=\"/form/AAF2\"><button class=\"button button2\">do not allow anymore all to food2 exept the animals in food1</button></a></p>");
+              }
+              else {
+                client.write("<p><a href=\"/form/AAF2\"><button class=\"button button2\">allow all to food2 exept the animals in food1</button></a></p>");
+              }
+
+              //old buttons
+              /*
+                            client.write("<button class=\"button button1\"><a href=\"CF1\">clear food1</a></button>");
+                            if (allowAllFood1) {
+                              client.write("<button class=\"button button1\"><a href=\"AAF1\">do not allow anymore all to food1 exept the animals in food2</a></button>");
+                            }
+                            else {
+                              client.write("<button class=\"button button1\"><a href=\"AAF1\">allow all to food1 exept the animals in food2</a></button>");
+                            }
+                            client.write("<button class=\"button button2\"><a href=\"CF2\">clear food2</a></button>");
+                            if (allowAllFood2) {
+                              client.write("<button class=\"button button2\"><a href=\"AAF2\">do not allow anymore all to food2 exept the animals in food1</a></button>");
+                            }
+                            else {
+                              client.write("<button class=\"button button2\"><a href=\"AAF2\">allow all to food2 exept the animals in food1</a></button>");
+                            }
+              */
+
 
               badInputError = false;
 
@@ -344,18 +474,15 @@ void Task2code( void * pvParameters ) {
           if (currentLine.endsWith("HTTP/1.1")) {
 
             //add id to Food1
-            if (currentLine.startsWith("GET /?AF1")) {
+            if (currentLine.startsWith("GET /form?AF1")) {
               if (index1 < LISTLENGTH - 1) {
-                Serial.println(currentLine);
+                //Serial.println(currentLine);
                 String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
-                Serial.println("idlogger");
-
-
                 if (checkId(idlogger)) {
                   Serial.println(idlogger);
                   uint16_t idInt = idlogger.toInt();
                   // here nog testen als je een te groot getal invoegd
-                  if (!checkArray(idInt,1)) {
+                  if (!checkArray(idInt, 1)) {
                     lijst1[index1] = idInt;
                     index1++;
                     Serial.println("added to list1");
@@ -364,7 +491,7 @@ void Task2code( void * pvParameters ) {
                     client.println("<script>alert(\"deze id zit al in deze lijst\");</script>");
                     badInputError = true;
                   }
-                  if (checkArray(idInt,2)) {
+                  if (checkArray(idInt, 2)) {
                     client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
                     badInputError = true;
                   }
@@ -382,15 +509,14 @@ void Task2code( void * pvParameters ) {
 
 
             //add id to Food2
-            if (currentLine.startsWith("GET /?AF2")) {
+            if (currentLine.startsWith("GET /form?AF2")) {
               if (index2 < LISTLENGTH - 1) {
                 String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
                 Serial.println(idlogger);
                 if (checkId(idlogger)) {
-                  Serial.println(idlogger);
                   uint16_t idInt = idlogger.toInt();
                   // here nog testen als je een te groot getal invoegd
-                  if (!checkArray(idInt,2)) {
+                  if (!checkArray(idInt, 2)) {
                     lijst2[index2] = idInt;
                     index2++;
                     Serial.println("added to list2");
@@ -399,7 +525,7 @@ void Task2code( void * pvParameters ) {
                     client.print("<script>alert(\"deze id zit al in deze lijst\");</script>");
                     badInputError = true;
                   }
-                  if (checkArray(idInt,1)) {
+                  if (checkArray(idInt, 1)) {
                     client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
                     badInputError = true;
                   }
@@ -419,12 +545,11 @@ void Task2code( void * pvParameters ) {
             boolean removeF = false;
 
             //remove from Food1
-            if (currentLine.startsWith("GET /?RF1")) {
+            if (currentLine.startsWith("GET /form?RF1")) {
               removeF = true;
               String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
               Serial.println(idlogger);
               if (checkId(idlogger)) {
-                Serial.println(idlogger);
                 uint16_t idInt = idlogger.toInt();
                 for (int i = 0; i < index1; i++) {
                   if (lijst1[i] == idInt) {
@@ -440,12 +565,11 @@ void Task2code( void * pvParameters ) {
             }
 
             //remove from Food2
-            if (currentLine.startsWith("GET /?RF2")) {
+            if (currentLine.startsWith("GET /form?RF2")) {
               removeF = true;
               String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
               Serial.println(idlogger);
               if (checkId(idlogger)) {
-                Serial.println(idlogger);
                 uint16_t idInt = idlogger.toInt();
                 for (int i = 0; i < index2; i++) {
                   if (lijst2[i] == idInt) {
@@ -467,10 +591,9 @@ void Task2code( void * pvParameters ) {
             }
 
             //set Threshold
-            if (currentLine.startsWith("GET /?ST")) {
+            if (currentLine.startsWith("GET /form?ST")) {
               String thresholdstring = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
-              Serial.println(thresholdstring);
-              
+
               if (checkThreshold(thresholdstring)) {
                 threshold = thresholdstring.toInt();
               }
@@ -480,36 +603,16 @@ void Task2code( void * pvParameters ) {
               }
             }
 
+
+
             // remove zeros in list1
             if (index1 > LISTLENGTH - 2) {
-              int newindex;
-              Serial.println("removezeros");
-
-              Serial.println("lijst1:");
-              for (int i = 0; i < index1; i++) {
-                Serial.print(lijst1[i]);
-              }
-              Serial.println("");
-              newindex = 0;
-              for (int i = 0; i < index1; i++) {
-                lijst1[newindex] = lijst1[i];
-                if (!lijst1[i] == 0) {
-                  newindex++;
-                }
-              }
-              index1 = newindex;
+              removeZeros(1);
             }
+
             //remove zeros in list2
             if (index2 > LISTLENGTH - 2) {
-              int newindex;
-              newindex = 0;
-              for (int i = 0; i < index2; i++) {
-                lijst2[newindex] = lijst2[i];
-                if (!lijst2[i] == 0) {
-                  newindex++;
-                }
-              }
-              index2 = newindex;
+              removeZeros(2);
             }
 
 
@@ -530,6 +633,33 @@ void Task2code( void * pvParameters ) {
           }
 
 
+          //clear food 1
+          if (currentLine.endsWith("GET /form/CF1")) {
+            for (int i = 0; i <= index1; i++) {
+              lijst1[i] = 0;
+            }
+            index1 = 0;
+          }
+          
+          //Allow all to food 1
+          if (currentLine.endsWith("GET /form/AAF1")) {
+            allowAllFood1 = not(allowAllFood1);
+          }
+
+          //clear food 2
+          if (currentLine.endsWith("GET /form/CF2")) {
+            for (int i = 0; i <= index2; i++) {
+              lijst2[i] = 0;
+            }
+            index2 = 0;
+          }
+          
+          //Allow all to food 2
+          if (currentLine.endsWith("GET /form/AAF2")) {
+            allowAllFood2 = not(allowAllFood2);
+          }
+
+
           //end of HTTP page
           if (c == '\n') {// if the byte is a newline character
             // if the current line is blank, you got two newline characters in a row.
@@ -545,50 +675,29 @@ void Task2code( void * pvParameters ) {
       client.stop();
       Serial.println("Client Disconnected.");
     }
-
     delay(2000); //here was 5000
   }
 }
 
 
-/*
-// check if id is already in lijst1
-boolean checkArray1(uint16_t id) {
-  for (int i = 0; i < index1; i++) {
-    if (lijst1[i] == id) {
-      return true;
+boolean checkArray(uint16_t id, int nummer) {
+  if (nummer == 1) {
+    for (int i = 0; i < index1; i++) {
+      if (lijst1[i] == id) {
+        return true;
+      }
     }
+    return false;
+  }
+  else if (nummer == 2) {
+    for (int i = 0; i < index2; i++) {
+      if (lijst2[i] == id) {
+        return true;
+      }
+    }
+    return false;
   }
   return false;
-}
-
-// check if id is already in lijst2
-boolean checkArray2(uint16_t id) {
-  for (int i = 0; i < index2; i++) {
-    if (lijst2[i] == id) {
-      return true;
-    }
-  }
-  return false;
-}
-*/
-boolean checkArray(uint16_t id, int nummer){
-  if (nummer == 1){
-  for (int i = 0; i < index1; i++) {
-    if (lijst1[i] == id) {
-      return true;
-    }
-  }
-  return false;
-  }
-  else if (nummer == 2){
-        for (int i = 0; i < index2; i++) {
-    if (lijst2[i] == id) {
-      return true;
-    }
-  }
-  return false;
-  }
 }
 
 //check if string is int
@@ -601,24 +710,54 @@ boolean checkId(String s) {
   return true;
 }
 
-boolean checkThreshold(String s){
-    if(s.charAt(0)!='-'){
-      return false;
-    }
-    for (int i = 1; i < s.length(); i++) {
+boolean checkThreshold(String s) {
+  if (s.charAt(0) != '-') {
+    return false;
+  }
+  for (int i = 1; i < s.length(); i++) {
     if (!isDigit(s.charAt(i))) {
       return false;
     }
   }
-  Serial.println("check threshold oke");
   return true;
+}
+
+void removeZeros(byte nummer) {
+
+  if (nummer == 0) {
+    for (int i = 0; i < 2; i++) {
+      removeZeros(i);
+    }
+  }
+  else if (nummer == 1) {
+    int newindex;
+    newindex = 0;
+    for (int i = 0; i < index1; i++) {
+      lijst1[newindex] = lijst1[i];
+      if (!lijst1[i] == 0) {
+        newindex++;
+      }
+    }
+    index1 = newindex;
+  }
+  else if (nummer == 2) {
+    int newindex;
+    newindex = 0;
+    for (int i = 0; i < index2; i++) {
+      lijst2[newindex] = lijst2[i];
+      if (!lijst2[i] == 0) {
+        newindex++;
+      }
+    }
+    index2 = newindex;
+  }
 }
 
 
 // to do
 /*
-   melding als verwijder maar niet in lijst -> nu komen de eerste 2 lijnen er bij op die nog bij de header horen, .write werkt niet
-   melding als al in andere lijst
+   VV melding als verwijder maar niet in lijst -> nu komen de eerste 2 lijnen er bij op die nog bij de header horen, .write werkt niet
+   VV melding als al in andere lijst
    VV               lijst toevoegen aan webpagina
    andere rommel eruit
    VV          error bij 100 dieren
@@ -627,9 +766,9 @@ boolean checkThreshold(String s){
    miss lijst in eeprom zetten??? daarnaar kijken
    VV      kleine letters automatisch veranderen naar hoofdletters bij intypen
    kijken of int die ingetyped is niet te groot is
-   bij 2 voederbakken geen enkele open
+   VV bij 2 voederbakken geen enkele open
    VVVthreshold
-   in webserver threshold instellen
+   VV in webserver threshold instellen
    in webserver zeggen bv alles 1
 */
 
