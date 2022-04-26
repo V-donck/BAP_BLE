@@ -18,7 +18,7 @@ BLEScan *pBLEScan;
 
 const char *ssid = "SmartFeeder";
 const char *password = "password";
-const int threshold = -70;
+int threshold = -70;
 const int LISTLENGTH = 100;
 WiFiServer server(80);
 uint16_t lijst1[LISTLENGTH];
@@ -29,8 +29,8 @@ Servo servo1;
 Servo servo2;
 int closeFood = 0;
 int openFood = 180;
-boolean food1Open=false;
-boolean food2Open=false;
+boolean food1Open = false;
+boolean food2Open = false;
 
 // Tasks
 TaskHandle_t Task1;
@@ -38,9 +38,9 @@ TaskHandle_t Task2;
 
 
 //function declarations
-boolean checkArray1(uint16_t id);
-boolean checkArray2(uint16_t id);
+boolean checkArray(uint16_t id, int nummer);
 boolean checkId(String idlogger);
+boolean checkThreshold(String threshold);
 
 
 
@@ -57,7 +57,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
       {
         std::string namedevice = advertisedDevice->getName();
         int RSSi = advertisedDevice->getRSSI();
-        if (RSSi>=threshold){
+        if (RSSi >= threshold) {
           std::string pr = "Prox";
           if (namedevice == pr) {
             Serial.print("Device name: ");
@@ -87,28 +87,28 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
               receivedId = strtol(be, &pEnd, 16);
               Serial.println(receivedId);
               // als id in lijst 1 -> voederbak1 open
-              if (checkArray1(receivedId)) {
+              if (checkArray(receivedId,1)) {
                 // open voederbak1
                 // nu voor test led aan
                 digitalWrite(LED_BUILTIN, HIGH);
                 Serial.println("voederbak1 open!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 //servo1.write(openFood);
-                food1Open=true;
+                food1Open = true;
               }
-              else{
+              else {
                 //servo1.write(closeFood);
                 Serial.println("close food1");
                 digitalWrite(LED_BUILTIN, LOW);
               }
-              if(checkArray2(receivedId)){
+              if (checkArray(receivedId,2)) {
                 Serial.println("voederbak2 open!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                 food2Open = true;
               }
-  
+
             }
           }
         }
-        else{
+        else {
           Serial.println("RSSI is te laag, te ver weg");
         }
       }
@@ -187,46 +187,93 @@ void Task1code( void * pvParameters ) {
     Serial.println("Scan done!");
 
     // if one of them, then open it, otherwise close both
-    if (!(food1Open && food2Open)){
+    if (!(food1Open && food2Open)) {
       Serial.println("niet allebei open");
-      if (food1Open){
+      if (food1Open) {
         servo1.write(openFood);
         servo2.write(closeFood);
         Serial.println("food1 open");
       }
-      else if(food2Open){
+      else if (food2Open) {
         servo2.write(openFood);
         servo1.write(closeFood);
         Serial.println("food2 open");
       }
-      else{
+      else {
         Serial.println("allebei gesloten");
         servo1.write(closeFood);
         servo2.write(closeFood);
       }
     }
-    else{
+    else {
       Serial.println("allebei moeten open, dus allebei gesloten");
       servo1.write(closeFood);
       servo2.write(closeFood);
     }
-    food1Open=false;
-    food2Open=false;
+    food1Open = false;
+    food2Open = false;
     delay(2000);
     pBLEScan->clearResults(); // delete results fromBLEScan buffer to release memory
   }
 }
 
+//laten zien hoe de pointer kan werken
+/*
+  void loadwebpage(WiFiClient *clientptr, boolean error) {
+  String stringlist1 = "";
+  String stringlist2;
+  for (int i = 0; i < index1; i++) {
+    if (lijst1[i] != 0) {
+      stringlist1 = stringlist1 + " \n" + lijst1[i];
+    }
+  }
+  for (int i = 0; i < index2; i++) {
+    if (lijst2[i] != 0) {
+      stringlist2 = stringlist2 + " \n" + lijst2[i];
+    }
+  }
+
+
+  WiFiClient client = *clientptr;
+  // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+  // and a content-type so the client knows what's coming, then a blank line:
+  if (!error){
+  client.println("HTTP/1.1 200 OK");
+
+  client.println("Content-type:text/html");
+  }
+  client.println();
+  // the content of the HTTP response follows the header:
+  client.write("<style>{box-sizing: border-box;}.column {float: left;width: 50%;}.row:after { content: \"\";display: table;clear: both; }</style>");
+  //client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
+  //client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
+
+  client.write("<form method=GET>Add to Food 1: <input type=text name=AF1><input type=submit></form>");
+
+  client.write("<form method=GET>remove from Food 1: <input type=text name=RF1><input type=submit></form>");
+  client.write("<form method=GET>Add to Food 2: <input type=text name=AF2><input type=submit></form>");
+  client.write("<form method=GET>remove from Food 2: <input type=text name=RF2><input type=submit></form>");
+  client.write("<div class=\"row\"><div class=\"column\" style=\"background-color:#FFB695;\"><h2>Food 1</h2><p>");
+  client.print(stringlist1);
+  client.write("</p></div><div class=\"column\" style=\"background-color:#96D1CD;\"><h2>Food 2</h2><p>");
+  client.print(stringlist2);
+  client.print("</p></div></div>");
+
+  }
+*/
 
 //Task2code: Handle WiFi
 void Task2code( void * pvParameters ) {
   Serial.print("Task2 running on core ");
   Serial.println(xPortGetCoreID());
   setup_wifi();
+  boolean badInputError = false;
 
   //a infinite for loop that creates the webserver
   for (;;) {
     WiFiClient client = server.available();   // listen for incoming clients
+    WiFiClient *clientptr;
+    clientptr = &client;
     if (client) {                             // if you get a client,
       Serial.println("New Client.");           // print a message out the serial port
       String currentLine = "";                // make a String to hold incoming data from the client
@@ -251,10 +298,13 @@ void Task2code( void * pvParameters ) {
                 }
               }
 
+
               // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
               // and a content-type so the client knows what's coming, then a blank line:
-              client.println("HTTP/1.1 200 OK");
-              client.println("Content-type:text/html");
+              if (!badInputError) {
+                client.println("HTTP/1.1 200 OK");
+                client.println("Content-type:text/html");
+              }
               client.println();
               // the content of the HTTP response follows the header:
               client.write("<style>{box-sizing: border-box;}.column {float: left;width: 50%;}.row:after { content: \"\";display: table;clear: both; }</style>");
@@ -270,6 +320,11 @@ void Task2code( void * pvParameters ) {
               client.write("</p></div><div class=\"column\" style=\"background-color:#96D1CD;\"><h2>Food 2</h2><p>");
               client.print(stringlist2);
               client.print("</p></div></div>");
+              client.write("<form method=GET>set threshold: <input type=text name=ST><input type=submit></form>");
+              client.print("current threshold : ");
+              client.print(String(threshold));
+
+              badInputError = false;
 
               Serial.println("einde normal request");
 
@@ -300,24 +355,28 @@ void Task2code( void * pvParameters ) {
                   Serial.println(idlogger);
                   uint16_t idInt = idlogger.toInt();
                   // here nog testen als je een te groot getal invoegd
-                  if (!checkArray1(idInt)) {
+                  if (!checkArray(idInt,1)) {
                     lijst1[index1] = idInt;
                     index1++;
                     Serial.println("added to list1");
                   }
                   else {
                     client.println("<script>alert(\"deze id zit al in deze lijst\");</script>");
+                    badInputError = true;
                   }
-                  if (checkArray2(idInt)) {
+                  if (checkArray(idInt,2)) {
                     client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
+                    badInputError = true;
                   }
                 }
                 else {
                   client.print("<script>alert(\"deze id is niet juist\");</script>");
+                  badInputError = true;
                 }
               }
               else {
                 client.print("<script>alert(\"Er zitten te veel id's in deze lijst\");</script>");
+                badInputError = true;
               }
             }
 
@@ -331,24 +390,28 @@ void Task2code( void * pvParameters ) {
                   Serial.println(idlogger);
                   uint16_t idInt = idlogger.toInt();
                   // here nog testen als je een te groot getal invoegd
-                  if (!checkArray2(idInt)) {
+                  if (!checkArray(idInt,2)) {
                     lijst2[index2] = idInt;
                     index2++;
                     Serial.println("added to list2");
                   }
                   else {
                     client.print("<script>alert(\"deze id zit al in deze lijst\");</script>");
+                    badInputError = true;
                   }
-                  if (checkArray1(idInt)) {
+                  if (checkArray(idInt,1)) {
                     client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
+                    badInputError = true;
                   }
                 }
                 else {
                   client.print("<script>alert(\"deze id is niet juist\");</script>");
+                  badInputError = true;
                 }
               }
               else {
                 client.print("<script>alert(\"Er zitten te veel id's in deze lijst\");</script>");
+                badInputError = true;
               }
             }
 
@@ -372,6 +435,7 @@ void Task2code( void * pvParameters ) {
               }
               else {
                 client.print("<script>alert(\"deze id is niet juist\");</script>");
+                badInputError = true;
               }
             }
 
@@ -392,15 +456,29 @@ void Task2code( void * pvParameters ) {
               }
               else {
                 client.print("<script>alert(\"deze id is niet juist\");</script>");
+                badInputError = true;
               }
             }
 
             // warning message that id is not in list
             if (!inlist & removeF) {
               client.print("<script>alert(\"deze id zit niet in deze lijst\");</script>");
+              badInputError = true;
             }
 
-
+            //set Threshold
+            if (currentLine.startsWith("GET /?ST")) {
+              String thresholdstring = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
+              Serial.println(thresholdstring);
+              
+              if (checkThreshold(thresholdstring)) {
+                threshold = thresholdstring.toInt();
+              }
+              else {
+                client.print("<script>alert(\"deze threshold is niet juist\");</script>");
+                badInputError = true;
+              }
+            }
 
             // remove zeros in list1
             if (index1 > LISTLENGTH - 2) {
@@ -473,7 +551,7 @@ void Task2code( void * pvParameters ) {
 }
 
 
-
+/*
 // check if id is already in lijst1
 boolean checkArray1(uint16_t id) {
   for (int i = 0; i < index1; i++) {
@@ -493,6 +571,25 @@ boolean checkArray2(uint16_t id) {
   }
   return false;
 }
+*/
+boolean checkArray(uint16_t id, int nummer){
+  if (nummer == 1){
+  for (int i = 0; i < index1; i++) {
+    if (lijst1[i] == id) {
+      return true;
+    }
+  }
+  return false;
+  }
+  else if (nummer == 2){
+        for (int i = 0; i < index2; i++) {
+    if (lijst2[i] == id) {
+      return true;
+    }
+  }
+  return false;
+  }
+}
 
 //check if string is int
 boolean checkId(String s) {
@@ -501,6 +598,19 @@ boolean checkId(String s) {
       return false;
     }
   }
+  return true;
+}
+
+boolean checkThreshold(String s){
+    if(s.charAt(0)!='-'){
+      return false;
+    }
+    for (int i = 1; i < s.length(); i++) {
+    if (!isDigit(s.charAt(i))) {
+      return false;
+    }
+  }
+  Serial.println("check threshold oke");
   return true;
 }
 
@@ -519,6 +629,8 @@ boolean checkId(String s) {
    kijken of int die ingetyped is niet te groot is
    bij 2 voederbakken geen enkele open
    VVVthreshold
+   in webserver threshold instellen
+   in webserver zeggen bv alles 1
 */
 
 void loop() {}
