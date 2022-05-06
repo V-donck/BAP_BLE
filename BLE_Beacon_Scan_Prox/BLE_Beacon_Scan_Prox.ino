@@ -139,7 +139,7 @@ void setup()
 {
   Serial.begin(115200);
   servo1.attach(12);
-  servo2.attach(27);
+  servo2.attach(A0);
 
   //create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
   xTaskCreatePinnedToCore(
@@ -180,7 +180,6 @@ void Task1code( void * pvParameters ) {
     Serial.println("Scan done!");
 
     if (!(allowAllFood1 | allowAllFood2)) {// if no allowall
-
       // if one of them, then open it, otherwise close both
       if (!(food1Open && food2Open)) {
         if (food1Open) {
@@ -264,63 +263,15 @@ void Task1code( void * pvParameters ) {
 
 }
 
-//laten zien hoe de pointer kan werken
-/*
-  void loadwebpage(WiFiClient *clientptr, boolean error) {
-  String stringlist1 = "";
-  String stringlist2;
-  for (int i = 0; i < index1; i++) {
-    if (lijst1[i] != 0) {
-      stringlist1 = stringlist1 + " \n" + lijst1[i];
-    }
-  }
-  for (int i = 0; i < index2; i++) {
-    if (lijst2[i] != 0) {
-      stringlist2 = stringlist2 + " \n" + lijst2[i];
-    }
-  }
-
-
-  WiFiClient client = *clientptr;
-  // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-  // and a content-type so the client knows what's coming, then a blank line:
-  if (!error){
-  client.println("HTTP/1.1 200 OK");
-
-  client.println("Content-type:text/html");
-  }
-  client.println();
-  // the content of the HTTP response follows the header:
-  client.write("<style>{box-sizing: border-box;}.column {float: left;width: 50%;}.row:after { content: \"\";display: table;clear: both; }</style>");
-  //client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
-  //client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
-
-  client.write("<form method=GET>Add to Food 1: <input type=text name=AF1><input type=submit></form>");
-
-  client.write("<form method=GET>remove from Food 1: <input type=text name=RF1><input type=submit></form>");
-  client.write("<form method=GET>Add to Food 2: <input type=text name=AF2><input type=submit></form>");
-  client.write("<form method=GET>remove from Food 2: <input type=text name=RF2><input type=submit></form>");
-  client.write("<div class=\"row\"><div class=\"column\" style=\"background-color:#FFB695;\"><h2>Food 1</h2><p>");
-  client.print(stringlist1);
-  client.write("</p></div><div class=\"column\" style=\"background-color:#96D1CD;\"><h2>Food 2</h2><p>");
-  client.print(stringlist2);
-  client.print("</p></div></div>");
-
-  }
-*/
-
 //Task2code: Handle WiFi
 void Task2code( void * pvParameters ) {
   Serial.print("Task2 running on core ");
   Serial.println(xPortGetCoreID());
   setup_wifi();
   boolean badInputError = false;
-
   //a infinite for loop that creates the webserver
   for (;;) {
     WiFiClient client = server.available();   // listen for incoming clients
-    //WiFiClient *clientptr; // niet nodig
-    //clientptr = &client;// niet meer nodig
     if (client) {                             // if you get a client,
       Serial.println("New Client.");           // print a message out the serial port
       String currentLine = "";                // make a String to hold incoming data from the client
@@ -343,10 +294,10 @@ void Task2code( void * pvParameters ) {
               //write style and head and text input fields
               client.write(
                 "<style> body { background-color: rgb(213, 215, 215); } form { text-align: left; /*here kan ook centre*/ font-family: verdana; } p { font-family: verdana; margin: 10px; } .button { border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin-bottom: 5px; cursor: pointer; font-family: verdana; } .submitbutton { border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 10px; margin: 4px 10px; cursor: pointer; box-sizing: border-box; font-family: verdana; } .button1 { background-color: #4CAF50; } .button2 { background-color: #008CBA; } .column { float: left; width: 48%; font-family: verdana; margin: 5px; } .row:after { content: \"\"; display: table; clear: both; } div { margin-bottom: 10px; font-family: verdana; } label { display: inline-block; width: 200px; text-align: left; font-family: verdana; margin-left: 10px } .columnlist { float: left; width: 48%; font-family: verdana; height: 200px; margin: 5px } h1 { text-align: center; font-family: verdana; } h2 { margin-left: 10px; }</style><head> <title>SmartFeeder</title></head><body> <h1>Smart feeder</h1> <div class=row> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 1:</label> <input type=text name=AF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 1:</label> <input type=text name=RF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> </div> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 2: </label> <input type=text name=AF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 2: </label> <input type=text name=RF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> </div> </div>");
-
               //table with all current id's
+              // food 1
               client.write("<div class=row> <div class=columnlist style=background-color:#6eb069;> <h2>Food 1</h2>");
-              if (allowAllFood1) {
+              if (allowAllFood1) {//check if allowAll is enabled for food1
                 client.write("<p> (all allowed");
                 if (!allowAllFood2) {
                   client.write(" exept the animals that are in Food2)</p><br>");
@@ -362,9 +313,9 @@ void Task2code( void * pvParameters ) {
                 }
               }
               client.write("</p></div>");
-
+//food2
               client.write("<div class=columnlist style=background-color:#96D1CD;><h2>Food 2</h2>");
-              if (allowAllFood2) {
+              if (allowAllFood2) {//check if allowAll is enabled for food2
                 client.write("<p> (all allowed");
                 if (!allowAllFood1) {
                   client.write("exept the animals that are in Food1)</p><br>");
@@ -404,7 +355,6 @@ void Task2code( void * pvParameters ) {
               client.print("<p>Current threshold : ");
               client.print(String(threshold));
               client.write(" dB</p>");
-
               client.write(" <form action=/form method=GET> <div> <label>Set threshold: </label> <input type=text name=ST maxlength=5 size=7> <input type=submit class=submitbutton style=background-color:#3f3f3e> </div> </form></body>");
 
               badInputError = false;
@@ -583,12 +533,12 @@ void Task2code( void * pvParameters ) {
 
 
             // remove zeros in list1
-            if (index1 > LISTLENGTH - 2) {
+            if (index1 > LISTLENGTH - 2 || index1 == LISTLENGTH/2) {
               removeZeros(1);
             }
 
             //remove zeros in list2
-            if (index2 > LISTLENGTH - 2) {
+            if (index2 > LISTLENGTH - 2 || index2 == LISTLENGTH/2) {
               removeZeros(2);
             }
 
@@ -742,11 +692,11 @@ void removeZeros(byte nummer) {
    VV            lijst met 0 leegmaken
    miss lijst in eeprom zetten??? daarnaar kijken
    VV      kleine letters automatisch veranderen naar hoofdletters bij intypen
-   kijken of int die ingetyped is niet te groot is
+   vvkijken of int die ingetyped is niet te groot is
    VV bij 2 voederbakken geen enkele open
    VVVthreshold
    VV in webserver threshold instellen
-   in webserver zeggen bv alles 1
+   vvin webserver zeggen bv alles 1
 */
 
 void loop() {}
