@@ -9,22 +9,22 @@
 #include <WiFiAP.h>
 #include <ESP32Servo.h>
 
-
-// some global variables
+// Constants
 int scanTime = 5; //In seconds
-BLEScan *pBLEScan;
-
 const char *ssid = "SmartFeeder";
 const char *password = "password";
-int threshold = -70;
-const int LISTLENGTH = 100;
 WiFiServer server(80);
+const int LISTLENGTH = 100;
+Servo servo1;
+Servo servo2;
+
+// some global variables
+BLEScan *pBLEScan;
+int threshold = -70;
 uint16_t lijst1[LISTLENGTH];
 uint16_t lijst2[LISTLENGTH];
 int index1 = 0;
 int index2 = 0;
-Servo servo1;
-Servo servo2;
 int closeFood = 0;
 int openFood = 180;
 boolean food1Open = false;
@@ -44,8 +44,8 @@ boolean checkArray(uint16_t id, int nummer);
 boolean checkId(String idlogger);
 boolean checkThreshold(String threshold);
 void removeZeros(byte nummer);
-
-
+void Task1code( void * pvParameters );
+void Task2code( void * pvParameters );
 
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
@@ -340,46 +340,22 @@ void Task2code( void * pvParameters ) {
               }
               client.println();
               // the content of the HTTP response follows the header:
-              client.write("<style>.button {"
-                           "border: none;"
-                           "color: white;"
-                           "padding: 15px 32px;"
-                           "text-align: center;"
-                           "text-decoration: none;"
-                           "display: inline-block;"
-                           "font-size: 16px;"
-                           "margin: 4px 2px;"
-                           "cursor: pointer;"
-                           "}"
-                           ".submitbutton {"
-                           "border: none;"
-                           "color: white;"
-                           "padding: 10px 20px;"
-                           "text-align: center;"
-                           "text-decoration: none;"
-                           "display: inline-block;"
-                           "font-size: 10px;"
-                           "margin: 4px 2px;"
-                           "cursor: pointer;"
-                           "}"
+              //write style and head and text input fields
+              client.write(
+                "<style> body { background-color: rgb(213, 215, 215); } form { text-align: left; /*here kan ook centre*/ font-family: verdana; } p { font-family: verdana; margin: 10px; } .button { border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin-bottom: 5px; cursor: pointer; font-family: verdana; } .submitbutton { border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 10px; margin: 4px 10px; cursor: pointer; box-sizing: border-box; font-family: verdana; } .button1 { background-color: #4CAF50; } .button2 { background-color: #008CBA; } .column { float: left; width: 48%; font-family: verdana; margin: 5px; } .row:after { content: \"\"; display: table; clear: both; } div { margin-bottom: 10px; font-family: verdana; } label { display: inline-block; width: 200px; text-align: left; font-family: verdana; margin-left: 10px } .columnlist { float: left; width: 48%; font-family: verdana; height: 200px; margin: 5px } h1 { text-align: center; font-family: verdana; } h2 { margin-left: 10px; }</style><head> <title>SmartFeeder</title></head><body> <h1>Smart feeder</h1> <div class=row> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 1:</label> <input type=text name=AF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 1:</label> <input type=text name=RF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> </div> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 2: </label> <input type=text name=AF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 2: </label> <input type=text name=RF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> </div> </div>");
 
-                           ".button1 {background-color: #4CAF50;} /* Green */"
-                           ".button2 {background-color: #008CBA;} /* Blue */"
-                           "{box-sizing: border-box;}"
-                           ".column {float: left;width: 50%;}"
-                           ".row:after { content: \"\";display: table;clear: both; }"
-                           "</style>");
+
               //client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
               //client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
 
               //fields for filling in id of animals to add or remove
-              client.write("<form action=/form method=GET>Add to Food 1: <input type=text name=AF1><input type=submit class=\"submitbutton button1\"></form>");
-              client.write("<form action=/form method=GET>remove from Food 1: <input type=text name=RF1><input type=submit class=\"submitbutton button1\"></form>");
-              client.write("<form action=/form method=GET>Add to Food 2: <input type=text name=AF2><input type=submit class=\"submitbutton button2\"></form>");
-              client.write("<form action=/form method=GET>remove from Food 2: <input type=text name=RF2><input type=submit class=\"submitbutton button2\"></form>");
-
-//table with all current id's
-              client.write("<div class=\"row\"><div class=\"column\" style=\"background-color:#FFB695;\"><h2>Food 1</h2>");
+              /*client.write("<form action=/form method=GET>Add to Food 1: <input type=text name=AF1><input type=submit class=\"submitbutton button1\"></form>");
+                client.write("<form action=/form method=GET>remove from Food 1: <input type=text name=RF1><input type=submit class=\"submitbutton button1\"></form>");
+                client.write("<form action=/form method=GET>Add to Food 2: <input type=text name=AF2><input type=submit class=\"submitbutton button2\"></form>");
+                client.write("<form action=/form method=GET>remove from Food 2: <input type=text name=RF2><input type=submit class=\"submitbutton button2\"></form>");
+              */
+              //table with all current id's
+              client.write("<div class=row> <div class=columnlist style=background-color:#6eb069;> <h2>Food 1</h2>");
               if (allowAllFood1) {
                 client.write("<p> (all allowed");
                 if (!allowAllFood2) {
@@ -395,8 +371,29 @@ void Task2code( void * pvParameters ) {
                   client.print(String(lijst1[i]) + " \n");
                 }
               }
+              client.write("</p></div>");
 
-              client.write("</p></div><div class=\"column\" style=\"background-color:#96D1CD;\"><h2>Food 2</h2>");
+
+
+              /*
+                client.write("<div class=\"row\"><div class=\"column\" style=\"background-color:#FFB695;\"><h2>Food 1</h2>");
+                if (allowAllFood1) {
+                 client.write("<p> (all allowed");
+                 if (!allowAllFood2) {
+                   client.write(" exept the animals that are in Food2)</p><br>");
+                 }
+                 else {
+                   client.write(")</p><br>");
+                 }
+                }
+                client.write("<p>");
+                for (int i = 0; i < index1; i++) {
+                 if (lijst1[i] != 0) {
+                   client.print(String(lijst1[i]) + " \n");
+                 }
+                }
+              */
+              client.write("<div class=columnlist style=background-color:#96D1CD;><h2>Food 2</h2>");
               if (allowAllFood2) {
                 client.write("<p> (all allowed");
                 if (!allowAllFood1) {
@@ -412,29 +409,73 @@ void Task2code( void * pvParameters ) {
                   client.print(String(lijst2[i]) + " \n");
                 }
               }
-              client.print("</p></div></div>");
-              //field for setting threshold
-              client.write("<form action=/form method=GET>set threshold: <input type=text name=ST><input type=submit></form>");
-              client.println(" <br>");
-              client.print("current threshold : ");
-              client.print(String(threshold));
-//buttons for clearing list and allowing all animals to 1 list.
-              client.println("<p><a href=\"/form/CF1\"><button class=\"button button1\">Clear Food1</button></a></p>");
+              client.write("</p></div>");
 
+              /*
+                            client.write("</p></div><div class=\"column\" style=\"background-color:#96D1CD;\"><h2>Food 2</h2>");
+                            if (allowAllFood2) {
+                              client.write("<p> (all allowed");
+                              if (!allowAllFood1) {
+                                client.write("exept the animals that are in Food1)</p><br>");
+                              }
+                              else {
+                                client.write(")</p><br>");
+                              }
+                            }
+                            client.write("<p>");
+                            for (int i = 0; i < index2; i++) {
+                              if (lijst2[i] != 0) {
+                                client.print(String(lijst2[i]) + " \n");
+                              }
+                            }
+              */
+              //buttons
+              client.print("<div class=column><a href=/form/CF1><button class=\"button button1\">Clear Food1</button></a>");
               if (allowAllFood1) {
-                client.write("<p><a href=\"/form/AAF1\"><button class=\"button button1\">do not allow anymore all to food1 exept the animals in food2</button></a></p>");
+                client.write("<a href=/form/AAF1><button class=\"button button1\">do not allow anymore all to food1 exept the animals in food2</button></a></div>");
               }
               else {
-                client.write("<p><a href=\"/form/AAF1\"><button class=\"button button1\">allow all to food1 exept the animals in food2</button></a></p>");
+                client.write("<a href=/form/AAF1><button class=\"button button1\">allow all to food1 exept the animals in food2</button></a></div>");
               }
-              client.println("<p><a href=\"/form/CF2\"><button class=\"button button2\">Clear Food2</button></a></p>");
+              client.write("<div class=column><a href=/form/CF2><button class=\"button button2\">Clear Food2</button></a>");
               if (allowAllFood2) {
-                client.write("<p><a href=\"/form/AAF2\"><button class=\"button button2\">do not allow anymore all to food2 exept the animals in food1</button></a></p>");
+                client.write("<a href=/form/AAF2><button class=\"button button2\">do not allow anymore all to food2 exept the animals infood1</button></a></div>");
               }
               else {
-                client.write("<p><a href=\"/form/AAF2\"><button class=\"button button2\">allow all to food2 exept the animals in food1</button></a></p>");
+                client.write("<a href=/form/AAF2><button class=\"button button2\">allow all to food2 exept the animals infood1</button></a></div>");
               }
+              client.write("</div>");
 
+
+              //threshold
+              client.print("<p>Current threshold : ");
+              client.print(String(threshold));
+              client.write("</p>");
+
+              client.write(" <form action=/form method=GET> <div> <label>Set threshold: </label> <input type=text name=ST maxlength=5 size=7> <input type=submit class=submitbutton style=background-color:#3f3f3e> </div> </form></body>");
+
+              //client.write("<form action=/form method=GET>set threshold: <input type=text name=ST><input type=submit></form>");
+              //client.println(" <br>");
+
+              //client.print(String(threshold));
+              //buttons for clearing list and allowing all animals to 1 list.
+              /*   client.println("<p><a href=\"/form/CF1\"><button class=\"button button1\">Clear Food1</button></a></p>");
+
+                 if (allowAllFood1) {
+                   client.write("<p><a href=\"/form/AAF1\"><button class=\"button button1\">do not allow anymore all to food1 exept the animals in food2</button></a></p>");
+                   }
+                   else {
+                   client.write("<p><a href=\"/form/AAF1\"><button class=\"button button1\">allow all to food1 exept the animals in food2</button></a></p>");
+                   }
+
+                   client.println("<p><a href=\"/form/CF2\"><button class=\"button button2\">Clear Food2</button></a></p>");
+                   if (allowAllFood2) {
+                   client.write("<p><a href=\"/form/AAF2\"><button class=\"button button2\">do not allow anymore all to food2 exept the animals in food1</button></a></p>");
+                   }
+                   else {
+                   client.write("<p><a href=\"/form/AAF2\"><button class=\"button button2\">allow all to food2 exept the animals in food1</button></a></p>");
+                   }
+              */
               //old buttons
               /*
                             client.write("<button class=\"button button1\"><a href=\"CF1\">clear food1</a></button>");
@@ -640,7 +681,7 @@ void Task2code( void * pvParameters ) {
             }
             index1 = 0;
           }
-          
+
           //Allow all to food 1
           if (currentLine.endsWith("GET /form/AAF1")) {
             allowAllFood1 = not(allowAllFood1);
@@ -653,7 +694,7 @@ void Task2code( void * pvParameters ) {
             }
             index2 = 0;
           }
-          
+
           //Allow all to food 2
           if (currentLine.endsWith("GET /form/AAF2")) {
             allowAllFood2 = not(allowAllFood2);
