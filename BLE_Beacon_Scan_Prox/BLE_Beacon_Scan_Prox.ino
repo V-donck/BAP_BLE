@@ -344,16 +344,6 @@ void Task2code( void * pvParameters ) {
               client.write(
                 "<style> body { background-color: rgb(213, 215, 215); } form { text-align: left; /*here kan ook centre*/ font-family: verdana; } p { font-family: verdana; margin: 10px; } .button { border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin-bottom: 5px; cursor: pointer; font-family: verdana; } .submitbutton { border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 10px; margin: 4px 10px; cursor: pointer; box-sizing: border-box; font-family: verdana; } .button1 { background-color: #4CAF50; } .button2 { background-color: #008CBA; } .column { float: left; width: 48%; font-family: verdana; margin: 5px; } .row:after { content: \"\"; display: table; clear: both; } div { margin-bottom: 10px; font-family: verdana; } label { display: inline-block; width: 200px; text-align: left; font-family: verdana; margin-left: 10px } .columnlist { float: left; width: 48%; font-family: verdana; height: 200px; margin: 5px } h1 { text-align: center; font-family: verdana; } h2 { margin-left: 10px; }</style><head> <title>SmartFeeder</title></head><body> <h1>Smart feeder</h1> <div class=row> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 1:</label> <input type=text name=AF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 1:</label> <input type=text name=RF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> </div> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 2: </label> <input type=text name=AF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 2: </label> <input type=text name=RF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> </div> </div>");
 
-
-              //client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
-              //client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
-
-              //fields for filling in id of animals to add or remove
-              /*client.write("<form action=/form method=GET>Add to Food 1: <input type=text name=AF1><input type=submit class=\"submitbutton button1\"></form>");
-                client.write("<form action=/form method=GET>remove from Food 1: <input type=text name=RF1><input type=submit class=\"submitbutton button1\"></form>");
-                client.write("<form action=/form method=GET>Add to Food 2: <input type=text name=AF2><input type=submit class=\"submitbutton button2\"></form>");
-                client.write("<form action=/form method=GET>remove from Food 2: <input type=text name=RF2><input type=submit class=\"submitbutton button2\"></form>");
-              */
               //table with all current id's
               client.write("<div class=row> <div class=columnlist style=background-color:#6eb069;> <h2>Food 1</h2>");
               if (allowAllFood1) {
@@ -373,26 +363,6 @@ void Task2code( void * pvParameters ) {
               }
               client.write("</p></div>");
 
-
-
-              /*
-                client.write("<div class=\"row\"><div class=\"column\" style=\"background-color:#FFB695;\"><h2>Food 1</h2>");
-                if (allowAllFood1) {
-                 client.write("<p> (all allowed");
-                 if (!allowAllFood2) {
-                   client.write(" exept the animals that are in Food2)</p><br>");
-                 }
-                 else {
-                   client.write(")</p><br>");
-                 }
-                }
-                client.write("<p>");
-                for (int i = 0; i < index1; i++) {
-                 if (lijst1[i] != 0) {
-                   client.print(String(lijst1[i]) + " \n");
-                 }
-                }
-              */
               client.write("<div class=columnlist style=background-color:#96D1CD;><h2>Food 2</h2>");
               if (allowAllFood2) {
                 client.write("<p> (all allowed");
@@ -411,24 +381,7 @@ void Task2code( void * pvParameters ) {
               }
               client.write("</p></div>");
 
-              /*
-                            client.write("</p></div><div class=\"column\" style=\"background-color:#96D1CD;\"><h2>Food 2</h2>");
-                            if (allowAllFood2) {
-                              client.write("<p> (all allowed");
-                              if (!allowAllFood1) {
-                                client.write("exept the animals that are in Food1)</p><br>");
-                              }
-                              else {
-                                client.write(")</p><br>");
-                              }
-                            }
-                            client.write("<p>");
-                            for (int i = 0; i < index2; i++) {
-                              if (lijst2[i] != 0) {
-                                client.print(String(lijst2[i]) + " \n");
-                              }
-                            }
-              */
+
               //buttons
               client.print("<div class=column><a href=/form/CF1><button class=\"button button1\">Clear Food1</button></a>");
               if (allowAllFood1) {
@@ -450,50 +403,9 @@ void Task2code( void * pvParameters ) {
               //threshold
               client.print("<p>Current threshold : ");
               client.print(String(threshold));
-              client.write("</p>");
+              client.write(" dB</p>");
 
               client.write(" <form action=/form method=GET> <div> <label>Set threshold: </label> <input type=text name=ST maxlength=5 size=7> <input type=submit class=submitbutton style=background-color:#3f3f3e> </div> </form></body>");
-
-              //client.write("<form action=/form method=GET>set threshold: <input type=text name=ST><input type=submit></form>");
-              //client.println(" <br>");
-
-              //client.print(String(threshold));
-              //buttons for clearing list and allowing all animals to 1 list.
-              /*   client.println("<p><a href=\"/form/CF1\"><button class=\"button button1\">Clear Food1</button></a></p>");
-
-                 if (allowAllFood1) {
-                   client.write("<p><a href=\"/form/AAF1\"><button class=\"button button1\">do not allow anymore all to food1 exept the animals in food2</button></a></p>");
-                   }
-                   else {
-                   client.write("<p><a href=\"/form/AAF1\"><button class=\"button button1\">allow all to food1 exept the animals in food2</button></a></p>");
-                   }
-
-                   client.println("<p><a href=\"/form/CF2\"><button class=\"button button2\">Clear Food2</button></a></p>");
-                   if (allowAllFood2) {
-                   client.write("<p><a href=\"/form/AAF2\"><button class=\"button button2\">do not allow anymore all to food2 exept the animals in food1</button></a></p>");
-                   }
-                   else {
-                   client.write("<p><a href=\"/form/AAF2\"><button class=\"button button2\">allow all to food2 exept the animals in food1</button></a></p>");
-                   }
-              */
-              //old buttons
-              /*
-                            client.write("<button class=\"button button1\"><a href=\"CF1\">clear food1</a></button>");
-                            if (allowAllFood1) {
-                              client.write("<button class=\"button button1\"><a href=\"AAF1\">do not allow anymore all to food1 exept the animals in food2</a></button>");
-                            }
-                            else {
-                              client.write("<button class=\"button button1\"><a href=\"AAF1\">allow all to food1 exept the animals in food2</a></button>");
-                            }
-                            client.write("<button class=\"button button2\"><a href=\"CF2\">clear food2</a></button>");
-                            if (allowAllFood2) {
-                              client.write("<button class=\"button button2\"><a href=\"AAF2\">do not allow anymore all to food2 exept the animals in food1</a></button>");
-                            }
-                            else {
-                              client.write("<button class=\"button button2\"><a href=\"AAF2\">allow all to food2 exept the animals in food1</a></button>");
-                            }
-              */
-
 
               badInputError = false;
 
@@ -520,21 +432,26 @@ void Task2code( void * pvParameters ) {
                 //Serial.println(currentLine);
                 String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
                 if (checkId(idlogger)) {
-                  Serial.println(idlogger);
-                  uint16_t idInt = idlogger.toInt();
-                  // here nog testen als je een te groot getal invoegd
-                  if (!checkArray(idInt, 1)) {
-                    lijst1[index1] = idInt;
-                    index1++;
-                    Serial.println("added to list1");
+                  long idlong = idlogger.toInt();
+                  if (idlong > 65535) {
+                    client.print("<script>alert(\"deze id is niet juist\");</script>");
+                    badInputError = true;
                   }
                   else {
-                    client.println("<script>alert(\"deze id zit al in deze lijst\");</script>");
-                    badInputError = true;
-                  }
-                  if (checkArray(idInt, 2)) {
-                    client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
-                    badInputError = true;
+                    uint16_t idInt = idlong;
+                    if (!checkArray(idInt, 1)) {
+                      lijst1[index1] = idInt;
+                      index1++;
+                      Serial.println("added to list1");
+                    }
+                    else {
+                      client.println("<script>alert(\"deze id zit al in deze lijst\");</script>");
+                      badInputError = true;
+                    }
+                    if (checkArray(idInt, 2)) {
+                      client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
+                      badInputError = true;
+                    }
                   }
                 }
                 else {
@@ -555,20 +472,26 @@ void Task2code( void * pvParameters ) {
                 String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
                 Serial.println(idlogger);
                 if (checkId(idlogger)) {
-                  uint16_t idInt = idlogger.toInt();
-                  // here nog testen als je een te groot getal invoegd
-                  if (!checkArray(idInt, 2)) {
-                    lijst2[index2] = idInt;
-                    index2++;
-                    Serial.println("added to list2");
+                  long idlong = idlogger.toInt();
+                  if (idlong > 65535) {
+                    client.print("<script>alert(\"deze id is niet juist\");</script>");
+                    badInputError = true;
                   }
                   else {
-                    client.print("<script>alert(\"deze id zit al in deze lijst\");</script>");
-                    badInputError = true;
-                  }
-                  if (checkArray(idInt, 1)) {
-                    client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
-                    badInputError = true;
+                    uint16_t idInt = idlong;
+                    if (!checkArray(idInt, 2)) {
+                      lijst2[index2] = idInt;
+                      index2++;
+                      Serial.println("added to list2");
+                    }
+                    else {
+                      client.print("<script>alert(\"deze id zit al in deze lijst\");</script>");
+                      badInputError = true;
+                    }
+                    if (checkArray(idInt, 1)) {
+                      client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
+                      badInputError = true;
+                    }
                   }
                 }
                 else {
@@ -591,11 +514,18 @@ void Task2code( void * pvParameters ) {
               String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
               Serial.println(idlogger);
               if (checkId(idlogger)) {
-                uint16_t idInt = idlogger.toInt();
-                for (int i = 0; i < index1; i++) {
-                  if (lijst1[i] == idInt) {
-                    lijst1[i] = 0;
-                    inlist = true;
+                long idlong = idlogger.toInt();
+                if (idlong > 65535) {
+                  client.print("<script>alert(\"deze id is niet juist\");</script>");
+                  badInputError = true;
+                }
+                else {
+                  uint16_t idInt = idlong;
+                  for (int i = 0; i < index1; i++) {
+                    if (lijst1[i] == idInt) {
+                      lijst1[i] = 0;
+                      inlist = true;
+                    }
                   }
                 }
               }
@@ -611,11 +541,18 @@ void Task2code( void * pvParameters ) {
               String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
               Serial.println(idlogger);
               if (checkId(idlogger)) {
-                uint16_t idInt = idlogger.toInt();
-                for (int i = 0; i < index2; i++) {
-                  if (lijst2[i] == idInt) {
-                    lijst2[i] = 0;
-                    inlist = true;
+                long idlong = idlogger.toInt();
+                if (idlong > 65535) {
+                  client.print("<script>alert(\"deze id is niet juist\");</script>");
+                  badInputError = true;
+                }
+                else {
+                  uint16_t idInt = idlong;
+                  for (int i = 0; i < index2; i++) {
+                    if (lijst2[i] == idInt) {
+                      lijst2[i] = 0;
+                      inlist = true;
+                    }
                   }
                 }
               }
@@ -645,7 +582,6 @@ void Task2code( void * pvParameters ) {
             }
 
 
-
             // remove zeros in list1
             if (index1 > LISTLENGTH - 2) {
               removeZeros(1);
@@ -655,7 +591,6 @@ void Task2code( void * pvParameters ) {
             if (index2 > LISTLENGTH - 2) {
               removeZeros(2);
             }
-
 
             // print in serialmonitor
             Serial.println("lijst1:");
@@ -672,7 +607,6 @@ void Task2code( void * pvParameters ) {
             }
             Serial.println(" ");
           }
-
 
           //clear food 1
           if (currentLine.endsWith("GET /form/CF1")) {
@@ -743,6 +677,9 @@ boolean checkArray(uint16_t id, int nummer) {
 
 //check if string is int
 boolean checkId(String s) {
+  if (s.length() == 0) {
+    return false;
+  }
   for (int i = 0; i < s.length(); i++) {
     if (!isDigit(s.charAt(i))) {
       return false;
@@ -764,7 +701,6 @@ boolean checkThreshold(String s) {
 }
 
 void removeZeros(byte nummer) {
-
   if (nummer == 0) {
     for (int i = 0; i < 2; i++) {
       removeZeros(i);
