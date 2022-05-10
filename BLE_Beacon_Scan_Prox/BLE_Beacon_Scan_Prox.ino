@@ -242,7 +242,7 @@ void Task1code( void * pvParameters ) {
         servo2.write(closeFood);
         Serial.println("food1 open, terwijl 2 voor iedereen openstaat, maar enkel animals van food1 aanwezig");
       }
-      if (food1Open | !(food2Open | notFood2)) { //there is an animal that must have food1 or no animal in the neighborhood
+      else if (food1Open | !(food2Open | notFood2)) { //there is an animal that must have food1 or no animal in the neighborhood
         servo1.write(closeFood);
         servo2.write(closeFood);
         Serial.println("allebei gesloten there is an animal that must have food1 or no animal in the neighborhood ");
@@ -318,7 +318,7 @@ void Task2code( void * pvParameters ) {
               if (allowAllFood2) {//check if allowAll is enabled for food2
                 client.write("<p> (all allowed");
                 if (!allowAllFood1) {
-                  client.write("exept the animals that are in Food1)</p><br>");
+                  client.write(" exept the animals that are in Food1)</p><br>");
                 }
                 else {
                   client.write(")</p><br>");
