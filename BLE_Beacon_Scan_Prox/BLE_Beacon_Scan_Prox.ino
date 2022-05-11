@@ -117,7 +117,7 @@ void setup_ble() {
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true); //active scan uses more power, but get results faster
-  pBLEScan->setInterval(600); // here was 100
+  pBLEScan->setInterval(800); // here was 100
   pBLEScan->setWindow(300); // less or equal setInterval value
 }
 
@@ -293,7 +293,131 @@ void Task2code( void * pvParameters ) {
               // the content of the HTTP response follows the header:
               //write style and head and text input fields
               client.write(
-                "<style> body { background-color: rgb(213, 215, 215); } form { text-align: left; /*here kan ook centre*/ font-family: verdana; } p { font-family: verdana; margin: 10px; } .button { border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin-bottom: 5px; margin-right: 5px; cursor: pointer; font-family: verdana; } .submitbutton { border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 10px; margin: 4px 10px; cursor: pointer; box-sizing: border-box; font-family: verdana; } .button1 { background-color: #4CAF50; } .button2 { background-color: #008CBA; } .column { float: left; width: 48%; font-family: verdana; margin: 5px; } .row:after { display: table; clear: both; } div {font-family: verdana; } label { display: inline-block; width: 200px; text-align: left; font-family: verdana; margin-left: 10px } .columnlist { float: left; width: 48%; font-family: verdana; height: 200px; margin: 5px } h1 { text-align: center; font-family: verdana; } h2 { margin-left: 10px; }</style><head> <title>SmartFeeder</title></head><body> <h1>Smart feeder</h1> <div class=row> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 1:</label> <input type=text name=AF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 1:</label> <input type=text name=RF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> </div> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 2: </label> <input type=text name=AF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 2: </label> <input type=text name=RF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> </div> </div>");
+                //"<style> body { background-color: rgb(213, 215, 215); } form { text-align: left; /*here kan ook centre*/ font-family: verdana; } p { font-family: verdana; margin: 10px; } .button { border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin-bottom: 5px; margin-right: 5px; cursor: pointer; font-family: verdana; } .submitbutton { border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 10px; margin: 4px 10px; cursor: pointer; box-sizing: border-box; font-family: verdana; } .button1 { background-color: #4CAF50; } .button2 { background-color: #008CBA; } .column { float: left; width: 48%; font-family: verdana; margin: 5px; } .row:after { display: table; clear: both; } div {font-family: verdana; } label { display: inline-block; width: 200px; text-align: left; font-family: verdana; margin-left: 10px } .columnlist { float: left; width: 48%; font-family: verdana; height: 200px; margin: 5px } h1 { text-align: center; font-family: verdana; } h2 { margin-left: 10px; }</style><head> <title>SmartFeeder</title></head><body> <h1>Smart feeder</h1> <div class=row> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 1:</label> <input type=text name=AF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 1:</label> <input type=text name=RF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> </div> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 2: </label> <input type=text name=AF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 2: </label> <input type=text name=RF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> </div> </div>");
+               R"===(<style>
+    body {
+        background-color: rgb(213, 215, 215);
+    }
+    form {
+        text-align: left;
+        /*here kan ook centre*/
+        font-family: verdana;
+    }
+    p {
+        font-family: verdana;
+        margin: 10px;
+    }
+    .button {
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        font-family: verdana;
+    margin-right: 5px;
+    
+    }
+    .submitbutton {
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 10px;
+        margin: 4px 10px;
+        cursor: pointer;
+        box-sizing: border-box;
+        font-family: verdana;
+    }
+    .button1 {
+        background-color: #4CAF50;
+    }
+    .button2 {
+        background-color: #008CBA;
+    }
+    .column {
+        float: left;
+        width: 48%;
+        font-family: verdana;
+        margin: 5px;
+    }
+    .row:after {
+        display: table;
+        clear: both;
+    }
+    div {
+        font-family: verdana;
+    }
+    label {
+        display: inline-block;
+        width: 200px;
+        text-align: left;
+        font-family: verdana;
+        margin-left: 10px
+    }
+    .columnlist {
+        float: left;
+        width: 48%;
+        font-family: verdana;
+        height: 200px;
+        margin: 5px
+    }
+    h1 {
+        text-align: center;
+        font-family: verdana;
+    }
+    h2 {
+        margin-left: 10px;
+    }
+</style>
+<head>
+    <title>SmartFeeder</title>
+</head>
+
+<body>
+    <h1>Smart feeder</h1>
+
+    <div class=row>
+        <div class=column>
+            <form action=/form method=GET>
+                <div>
+                    <label>Add to Food 1:</label>
+                    <input type=text name=AF1 maxlength=5 size=7>
+                    <input type=submit class="submitbutton button1">
+                </div>
+            </form>
+            <form action=/form method=GET>
+                <div>
+                    <label>Remove from Food 1:</label>
+                    <input type=text name=RF1 maxlength=5 size=7>
+                    <input type=submit class="submitbutton button1">
+                </div>
+            </form>
+        </div>
+        <div class=column>
+            <form action=/form method=GET>
+                <div>
+                    <label>Add to Food 2: </label>
+                    <input type=text name=AF2 maxlength=5 size=7>
+                    <input type=submit class="submitbutton button2">
+                </div>
+            </form>
+            <form action=/form method=GET>
+                <div>
+                    <label>Remove from Food 2: </label>
+                    <input type=text name=RF2 maxlength=5 size=7>
+                    <input type=submit class="submitbutton button2">
+                </div>
+            </form>
+        </div>
+    </div>
+   )===");
+              
               //table with all current id's
               // food 1
               client.write("<div class=row> <div class=columnlist style=background-color:#6eb069;> <h2>Food 1</h2>");
