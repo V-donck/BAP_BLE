@@ -1,3 +1,5 @@
+#include <ESP32Time.h>
+
 
 #include <Arduino.h>
 
@@ -9,6 +11,7 @@
 #include <WiFiAP.h>
 #include <ESP32Servo.h>
 
+
 // Constants
 int scanTime = 5; //In seconds
 const char *ssid = "SmartFeeder";
@@ -17,6 +20,7 @@ WiFiServer server(80);
 const int LISTLENGTH = 1000;
 Servo servo1;
 Servo servo2;
+int maxlogs = 1000;
 
 // some global variables
 BLEScan *pBLEScan;
@@ -33,6 +37,19 @@ boolean notFood1 = false;
 boolean notFood2 = false;
 boolean allowAllFood1 = false;
 boolean allowAllFood2 = false;
+boolean loggerspage = false;
+ESP32Time rtc;
+
+
+
+struct logid{
+  String timelog;
+  uint16_t id;
+  byte feeder;
+};
+
+logid loglist[1000];
+int count = 0;
 
 // Tasks
 TaskHandle_t Task1;
@@ -89,6 +106,10 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
               char * pEnd;
               receivedId = strtol(be, &pEnd, 16);
               Serial.println(receivedId);
+              if (count<maxlogs){
+                loglist[count] = {rtc.getTime("%d-%m-%Y, %H:%M:%S"),receivedId,5};
+                count++;
+              }
               if (checkArray(receivedId, 1)) {
                 food1Open = true;
               }
@@ -112,6 +133,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 
 
 void setup_ble() {
+  rtc.setTime(0, 0, 0, 1, 1, 2000);
   Serial.println("Scanning...");
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
@@ -294,201 +316,230 @@ void Task2code( void * pvParameters ) {
               //write style and head and text input fields
               client.write(
                 //"<style> body { background-color: rgb(213, 215, 215); } form { text-align: left; /*here kan ook centre*/ font-family: verdana; } p { font-family: verdana; margin: 10px; } .button { border: none; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin-bottom: 5px; margin-right: 5px; cursor: pointer; font-family: verdana; } .submitbutton { border: none; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 10px; margin: 4px 10px; cursor: pointer; box-sizing: border-box; font-family: verdana; } .button1 { background-color: #4CAF50; } .button2 { background-color: #008CBA; } .column { float: left; width: 48%; font-family: verdana; margin: 5px; } .row:after { display: table; clear: both; } div {font-family: verdana; } label { display: inline-block; width: 200px; text-align: left; font-family: verdana; margin-left: 10px } .columnlist { float: left; width: 48%; font-family: verdana; height: 200px; margin: 5px } h1 { text-align: center; font-family: verdana; } h2 { margin-left: 10px; }</style><head> <title>SmartFeeder</title></head><body> <h1>Smart feeder</h1> <div class=row> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 1:</label> <input type=text name=AF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 1:</label> <input type=text name=RF1 maxlength=5 size=7> <input type=submit class=\"submitbutton button1\"> </div> </form> </div> <div class=column> <form action=/form method=GET> <div> <label>Add to Food 2: </label> <input type=text name=AF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> <form action=/form method=GET> <div> <label>Remove from Food 2: </label> <input type=text name=RF2 maxlength=5 size=7> <input type=submit class=\"submitbutton button2\"> </div> </form> </div> </div>");
-               R"===(<style>
-    body {
-        background-color: rgb(213, 215, 215);
-    }
-    form {
-        text-align: left;
-        /*here kan ook centre*/
-        font-family: verdana;
-    }
-    p {
-        font-family: verdana;
-        margin: 10px;
-    }
-    .button {
-        border: none;
-        color: white;
-        padding: 15px 32px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 16px;
-        margin-bottom: 5px;
-        cursor: pointer;
-        font-family: verdana;
-    margin-right: 5px;
-    
-    }
-    .submitbutton {
-        border: none;
-        color: white;
-        padding: 10px 20px;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 10px;
-        margin: 4px 10px;
-        cursor: pointer;
-        box-sizing: border-box;
-        font-family: verdana;
-    }
-    .button1 {
-        background-color: #4CAF50;
-    }
-    .button2 {
-        background-color: #008CBA;
-    }
-    .column {
-        float: left;
-        width: 48%;
-        font-family: verdana;
-        margin: 5px;
-    }
-    .row:after {
-        display: table;
-        clear: both;
-    }
-    div {
-        font-family: verdana;
-    }
-    label {
-        display: inline-block;
-        width: 200px;
-        text-align: left;
-        font-family: verdana;
-        margin-left: 10px
-    }
-    .columnlist {
-        float: left;
-        width: 48%;
-        font-family: verdana;
-        height: 200px;
-        margin: 5px
-    }
-    h1 {
-        text-align: center;
-        font-family: verdana;
-    }
-    h2 {
-        margin-left: 10px;
-    }
-</style>
-<head>
-    <title>SmartFeeder</title>
-</head>
+                R"===(
+                <style>
+                  body {
+                      background-color: rgb(213, 215, 215);
+                  }
+                  form {
+                      text-align: left;
+                      /*here kan ook centre*/
+                      font-family: verdana;
+                  }
+                  p {
+                      font-family: verdana;
+                      margin: 10px;
+                  }
+                  .button {
+                      border: none;
+                      color: white;
+                      padding: 15px 32px;
+                      text-align: center;
+                      text-decoration: none;
+                      display: inline-block;
+                      font-size: 16px;
+                      margin-bottom: 5px;
+                      cursor: pointer;
+                      font-family: verdana;
+                  margin-right: 5px;
+                  
+                  }
+                  .submitbutton {
+                      border: none;
+                      color: white;
+                      padding: 10px 20px;
+                      text-align: center;
+                      text-decoration: none;
+                      display: inline-block;
+                      font-size: 10px;
+                      margin: 4px 10px;
+                      cursor: pointer;
+                      box-sizing: border-box;
+                      font-family: verdana;
+                  }
+                  .button1 {
+                      background-color: #4CAF50;
+                  }
+                  .button2 {
+                      background-color: #008CBA;
+                  }
+                  .column {
+                      float: left;
+                      width: 48%;
+                      font-family: verdana;
+                      margin: 5px;
+                  }
+                  .row:after {
+                      display: table;
+                      clear: both;
+                  }
+                  div {
+                      font-family: verdana;
+                  }
+                  label {
+                      display: inline-block;
+                      width: 200px;
+                      text-align: left;
+                      font-family: verdana;
+                      margin-left: 10px
+                  }
+                  .columnlist {
+                      float: left;
+                      width: 48%;
+                      font-family: verdana;
+                      height: 200px;
+                      margin: 5px
+                  }
+                  h1 {
+                      text-align: center;
+                      font-family: verdana;
+                  }
+                  h2 {
+                      margin-left: 10px;
+                  }
+                </style>
+                <head>
+                  <title>SmartFeeder</title>
+                </head>)===");
+              if (!loggerspage) {
+                client.write(R"===(
+                <body>
+                <div><a href=/LP><button class style="float: right";=\"submitbutton\">loggerpage</button></a>
+                <div><a href=/><button class style="float: right";=\"submitbutton\">refresh</button></a>
+                    <h1>Smart Feeder</h1>
+                
+                    <div class=row>
+                        <div class=column>
+                            <form action=/form method=GET>
+                                <div>
+                                    <label>Add to Food 1:</label>
+                                    <input type=text name=AF1 maxlength=5 size=7>
+                                    <input type=submit class="submitbutton button1">
+                                </div>
+                            </form>
+                            <form action=/form method=GET>
+                                <div>
+                                    <label>Remove from Food 1:</label>
+                                    <input type=text name=RF1 maxlength=5 size=7>
+                                    <input type=submit class="submitbutton button1">
+                                </div>
+                            </form>
+                        </div>
+                        <div class=column>
+                            <form action=/form method=GET>
+                                <div>
+                                    <label>Add to Food 2: </label>
+                                    <input type=text name=AF2 maxlength=5 size=7>
+                                    <input type=submit class="submitbutton button2">
+                                </div>
+                            </form>
+                            <form action=/form method=GET>
+                                <div>
+                                    <label>Remove from Food 2: </label>
+                                    <input type=text name=RF2 maxlength=5 size=7>
+                                    <input type=submit class="submitbutton button2">
+                                </div>
+                            </form>
+                        </div>
+                    </div>)===");
 
-<body>
-    <h1>Smart feeder</h1>
+                //table with all current id's
+                // food 1
+                client.write("<div class=row> <div class=columnlist style=background-color:#6eb069;> <h2>Food 1</h2>");
+                if (allowAllFood1) {//check if allowAll is enabled for food1
+                  client.write("<p> (all allowed");
+                  if (!allowAllFood2) {
+                    client.write(" exept the animals that are in Food2)</p><br>");
+                  }
+                  else {
+                    client.write(")</p><br>");
+                  }
+                }
+                client.write("<p>");
+                for (int i = 0; i < index1; i++) {
+                  if (lijst1[i] != 0) {
+                    client.print(String(lijst1[i]) + " \n");
+                  }
+                }
+                client.write("</p></div>");
+                //food2
+                client.write("<div class=columnlist style=background-color:#96D1CD;><h2>Food 2</h2>");
+                if (allowAllFood2) {//check if allowAll is enabled for food2
+                  client.write("<p> (all allowed");
+                  if (!allowAllFood1) {
+                    client.write(" exept the animals that are in Food1)</p><br>");
+                  }
+                  else {
+                    client.write(")</p><br>");
+                  }
+                }
+                client.write("<p>");
+                for (int i = 0; i < index2; i++) {
+                  if (lijst2[i] != 0) {
+                    client.print(String(lijst2[i]) + " \n");
+                  }
+                }
+                client.write("</p></div>");
 
-    <div class=row>
-        <div class=column>
-            <form action=/form method=GET>
-                <div>
-                    <label>Add to Food 1:</label>
-                    <input type=text name=AF1 maxlength=5 size=7>
-                    <input type=submit class="submitbutton button1">
-                </div>
-            </form>
-            <form action=/form method=GET>
-                <div>
-                    <label>Remove from Food 1:</label>
-                    <input type=text name=RF1 maxlength=5 size=7>
-                    <input type=submit class="submitbutton button1">
-                </div>
-            </form>
-        </div>
-        <div class=column>
-            <form action=/form method=GET>
-                <div>
-                    <label>Add to Food 2: </label>
-                    <input type=text name=AF2 maxlength=5 size=7>
-                    <input type=submit class="submitbutton button2">
-                </div>
-            </form>
-            <form action=/form method=GET>
-                <div>
-                    <label>Remove from Food 2: </label>
-                    <input type=text name=RF2 maxlength=5 size=7>
-                    <input type=submit class="submitbutton button2">
-                </div>
-            </form>
-        </div>
-    </div>
-   )===");
-              
-              //table with all current id's
-              // food 1
-              client.write("<div class=row> <div class=columnlist style=background-color:#6eb069;> <h2>Food 1</h2>");
-              if (allowAllFood1) {//check if allowAll is enabled for food1
-                client.write("<p> (all allowed");
-                if (!allowAllFood2) {
-                  client.write(" exept the animals that are in Food2)</p><br>");
+
+                //buttons
+                client.print("<div class=column><a href=/form/CF1><button class=\"button button1\">Clear Food1</button></a>");
+                if (allowAllFood1) {
+                  client.write("<a href=/form/AAF1><button class=\"button button1\">do not allow anymore all to food1 exept the animals in food2</button></a></div>");
                 }
                 else {
-                  client.write(")</p><br>");
+                  client.write("<a href=/form/AAF1><button class=\"button button1\">allow all to food1 exept the animals in food2</button></a></div>");
                 }
-              }
-              client.write("<p>");
-              for (int i = 0; i < index1; i++) {
-                if (lijst1[i] != 0) {
-                  client.print(String(lijst1[i]) + " \n");
-                }
-              }
-              client.write("</p></div>");
-//food2
-              client.write("<div class=columnlist style=background-color:#96D1CD;><h2>Food 2</h2>");
-              if (allowAllFood2) {//check if allowAll is enabled for food2
-                client.write("<p> (all allowed");
-                if (!allowAllFood1) {
-                  client.write(" exept the animals that are in Food1)</p><br>");
+                client.write("<div class=column><a href=/form/CF2><button class=\"button button2\">Clear Food2</button></a>");
+                if (allowAllFood2) {
+                  client.write("<a href=/form/AAF2><button class=\"button button2\">do not allow anymore all to food2 exept the animals infood1</button></a></div>");
                 }
                 else {
-                  client.write(")</p><br>");
+                  client.write("<a href=/form/AAF2><button class=\"button button2\">allow all to food2 exept the animals infood1</button></a></div>");
                 }
+                client.write("</div>");
+
+
+                //threshold
+                client.print("<p>Current threshold : ");
+                client.print(String(threshold));
+                client.write(" dB</p>");
+                client.write(" <form action=/form method=GET> <div> <label>Set threshold: </label> <input type=text name=ST maxlength=5 size=7> <input type=submit class=submitbutton style=background-color:#3f3f3e> </div> </form></body>");
+
+                badInputError = false;
+
+                Serial.println("einde normal request");
+
+                // The HTTP response ends with another blank line:
+                //client.println();// here was not comment
+                // break out of the while loop:
+                // break;// here was break
               }
-              client.write("<p>");
-              for (int i = 0; i < index2; i++) {
-                if (lijst2[i] != 0) {
-                  client.print(String(lijst2[i]) + " \n");
-                }
+              else // logerpage // here edit
+              {
+                badInputError = false;
+                client.write(R"===(
+                <body>
+                    <div><a href=/B><button class style="float: right";=\"submitbutton\">back</button></a></div>
+                    <h1>logs</h1>
+                    <form action=/form method=GET>
+                                <div>
+                                    <label>set time:</label>
+                                    <input type=text name=AF1 maxlength=5 size=7>
+                                    <input type=submit class="submitbutton button1">
+                                </div>
+                            </form>)===");
+                           client.write("<div><p>");
+                for (int i = 0; i<count;i++) {
+                  logid idlog = loglist[i];
+                    client.print(idlog.timelog + "; " + idlog.id + "; " + idlog.feeder + "<br>");
+                  }
+                
+                client.write("</p></div></body>"); 
+                    
+                    
+                    
               }
-              client.write("</p></div>");
-
-
-              //buttons
-              client.print("<div class=column><a href=/form/CF1><button class=\"button button1\">Clear Food1</button></a>");
-              if (allowAllFood1) {
-                client.write("<a href=/form/AAF1><button class=\"button button1\">do not allow anymore all to food1 exept the animals in food2</button></a></div>");
-              }
-              else {
-                client.write("<a href=/form/AAF1><button class=\"button button1\">allow all to food1 exept the animals in food2</button></a></div>");
-              }
-              client.write("<div class=column><a href=/form/CF2><button class=\"button button2\">Clear Food2</button></a>");
-              if (allowAllFood2) {
-                client.write("<a href=/form/AAF2><button class=\"button button2\">do not allow anymore all to food2 exept the animals infood1</button></a></div>");
-              }
-              else {
-                client.write("<a href=/form/AAF2><button class=\"button button2\">allow all to food2 exept the animals infood1</button></a></div>");
-              }
-              client.write("</div>");
-
-
-              //threshold
-              client.print("<p>Current threshold : ");
-              client.print(String(threshold));
-              client.write(" dB</p>");
-              client.write(" <form action=/form method=GET> <div> <label>Set threshold: </label> <input type=text name=ST maxlength=5 size=7> <input type=submit class=submitbutton style=background-color:#3f3f3e> </div> </form></body>");
-
-              badInputError = false;
-
-              Serial.println("einde normal request");
-
-              // The HTTP response ends with another blank line:
-              //client.println();// here was not comment
-              // break out of the while loop:
-              // break;// here was break
             } else {    // if you got a newline, then clear currentLine:
               currentLine = "";
             }
@@ -657,12 +708,12 @@ void Task2code( void * pvParameters ) {
 
 
             // remove zeros in list1
-            if (index1 > LISTLENGTH - 2 || index1 == LISTLENGTH/2) {
+            if (index1 > LISTLENGTH - 2 || index1 == LISTLENGTH / 2) {
               removeZeros(1);
             }
 
             //remove zeros in list2
-            if (index2 > LISTLENGTH - 2 || index2 == LISTLENGTH/2) {
+            if (index2 > LISTLENGTH - 2 || index2 == LISTLENGTH / 2) {
               removeZeros(2);
             }
 
@@ -707,6 +758,18 @@ void Task2code( void * pvParameters ) {
           if (currentLine.endsWith("GET /form/AAF2")) {
             allowAllFood2 = not(allowAllFood2);
           }
+
+          //loggerpage
+          if (currentLine.endsWith("GET /LP")) {
+            loggerspage = true;
+          }
+
+          //back to normal
+          if (currentLine.endsWith("GET /B")) {
+            loggerspage = false;
+          }
+
+
 
 
           //end of HTTP page
@@ -821,6 +884,15 @@ void removeZeros(byte nummer) {
    VVVthreshold
    VV in webserver threshold instellen
    vvin webserver zeggen bv alles 1
+
+mooiere buttons,
+set time
+refresh button bij logs
+miss downloadbaar
+feeder open or closed -> eerst op het juiste zetten, en dan in de open/close terug op 0 zetten als die toch dicht moest
+
+
+   
 */
 
 void loop() {}
