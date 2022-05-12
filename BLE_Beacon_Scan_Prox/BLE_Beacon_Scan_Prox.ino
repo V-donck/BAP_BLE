@@ -110,8 +110,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
               receivedId = strtol(be, &pEnd, 16);
               Serial.println(receivedId);
               if (count < MAXLOGS) {
-                String currentime= rtc.getTime("%d-%m-%Y, %H:%M:%S");
-                Serial.println(currentime);
                 
                 loglist[count] = {rtc.getTime("%d-%m-%Y, %H:%M:%S"), receivedId, 0};
                 count++;
