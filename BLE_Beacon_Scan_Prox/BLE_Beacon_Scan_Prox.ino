@@ -1,4 +1,5 @@
 #include <ESP32Time.h>
+#include "SPIFFS.h"
 
 
 #include <Arduino.h>
@@ -17,10 +18,10 @@ int scanTime = 5; //In seconds
 const char *ssid = "SmartFeeder";
 const char *password = "password";
 WiFiServer server(80);
-const int LISTLENGTH = 1000;
+const int LISTLENGTH = 500;
 Servo servo1;
 Servo servo2;
-int maxlogs = 1000;
+const int MAXLOGS = 3500;
 
 // some global variables
 BLEScan *pBLEScan;
@@ -39,16 +40,18 @@ boolean allowAllFood1 = false;
 boolean allowAllFood2 = false;
 boolean loggerspage = false;
 ESP32Time rtc;
+byte numberids;
+boolean downloadtrue;
+File file;
 
 
-
-struct logid{
+struct logid {
   String timelog;
   uint16_t id;
   byte feeder;
 };
 
-logid loglist[1000];
+logid loglist[MAXLOGS];
 int count = 0;
 
 // Tasks
@@ -106,9 +109,14 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
               char * pEnd;
               receivedId = strtol(be, &pEnd, 16);
               Serial.println(receivedId);
-              if (count<maxlogs){
-                loglist[count] = {rtc.getTime("%d-%m-%Y, %H:%M:%S"),receivedId,5};
+              if (count < MAXLOGS) {
+                String currentime= rtc.getTime("%d-%m-%Y, %H:%M:%S");
+                Serial.println(currentime);
+                
+                loglist[count] = {rtc.getTime("%d-%m-%Y, %H:%M:%S"), receivedId, 0};
                 count++;
+                numberids++;
+                Serial.println("logged 0");
               }
               if (checkArray(receivedId, 1)) {
                 food1Open = true;
@@ -196,10 +204,13 @@ void Task1code( void * pvParameters ) {
 
   // this is an infinite loop that scans for BLE devices
   for (;;) {
+    numberids = 0;
     BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
     Serial.print("Devices found: ");
     Serial.println(foundDevices.getCount());
     Serial.println("Scan done!");
+    byte whichFeeder = 0;
+
 
     if (!(allowAllFood1 | allowAllFood2)) {// if no allowall
       // if one of them, then open it, otherwise close both
@@ -207,12 +218,14 @@ void Task1code( void * pvParameters ) {
         if (food1Open) {
           servo1.write(openFood);
           servo2.write(closeFood);
+          whichFeeder = 1;
           Serial.println("food1 open");
         }
         else if (food2Open) {
           servo2.write(openFood);
           servo1.write(closeFood);
           Serial.println("food2 open");
+          whichFeeder = 2;
         }
         else {
           Serial.println("allebei gesloten");
@@ -233,6 +246,7 @@ void Task1code( void * pvParameters ) {
         Serial.println("food1 open");
         Serial.println("food2 open");
         Serial.println("both");
+        whichFeeder = 3;
 
       }
       else { // no animalin the neighborhood
@@ -246,6 +260,7 @@ void Task1code( void * pvParameters ) {
         servo1.write(closeFood);
         servo2.write(openFood);
         Serial.println("open 2, terwijl 1 voor iedereen mag, maar enkel een food2 in de buurt");
+        whichFeeder = 2;
       }
       else if (food2Open | !(food1Open | notFood1)) { //there is an animal that must have food2 or no animal in the neighborhood
         servo1.write(closeFood);
@@ -256,6 +271,7 @@ void Task1code( void * pvParameters ) {
         servo1.write(openFood);
         servo2.write(closeFood);
         Serial.println("food1 open");
+        whichFeeder = 1;
       }
     }
     else if (allowAllFood2) { // Food 2 allowed for all
@@ -263,17 +279,24 @@ void Task1code( void * pvParameters ) {
         servo1.write(openFood);
         servo2.write(closeFood);
         Serial.println("food1 open, terwijl 2 voor iedereen openstaat, maar enkel animals van food1 aanwezig");
+        whichFeeder = 1;
       }
       else if (food1Open | !(food2Open | notFood2)) { //there is an animal that must have food1 or no animal in the neighborhood
         servo1.write(closeFood);
         servo2.write(closeFood);
         Serial.println("allebei gesloten there is an animal that must have food1 or no animal in the neighborhood ");
+
       }
       else { // only animals in food2 or in no list
         servo1.write(closeFood);
         servo2.write(openFood);
         Serial.println("food2 open");
+        whichFeeder = 2;
       }
+    }
+    for (int i = 0; i < numberids; i++) {
+      loglist[count - numberids].feeder = whichFeeder;
+      Serial.println("loged again + " + whichFeeder);
     }
     food1Open = false;
     food2Open = false;
@@ -401,11 +424,12 @@ void Task2code( void * pvParameters ) {
                 <head>
                   <title>SmartFeeder</title>
                 </head>)===");
-              if (!loggerspage) {
+              if (!loggerspage & !downloadtrue) {
                 client.write(R"===(
                 <body>
-                <div><a href=/LP><button class style="float: right";=\"submitbutton\">loggerpage</button></a>
-                <div><a href=/><button class style="float: right";=\"submitbutton\">refresh</button></a>
+                
+                <div><a href=/LP><button class=submitbutton style="float: right; background-color:#3f3f3e;">loggerpage</button></a>
+                <div><a href=/><button class=submitbutton style="float: right; background-color:#3f3f3e">refresh</button></a>
                     <h1>Smart Feeder</h1>
                 
                     <div class=row>
@@ -515,12 +539,31 @@ void Task2code( void * pvParameters ) {
                 // break out of the while loop:
                 // break;// here was break
               }
+
+              else if (downloadtrue) {
+                Serial.print("downloadture !! ");
+                client.println();
+
+                while (file.available()) {
+                  Serial.print("reading");
+                  client.write(file.read());
+                }
+                downloadtrue = false;
+              }
               else // logerpage // here edit
               {
                 badInputError = false;
                 client.write(R"===(
                 <body>
-                    <div><a href=/B><button class style="float: right";=\"submitbutton\">back</button></a></div>
+                <div><a href=/DL><button class style="float: right";=\"submitbutton\">download</button></a></div>
+
+
+
+<a href="/test.txt" download="test">downloasd
+</a>
+                
+                <div><a href=/LP><button class=submitbutton style="float: right; background-color:#3f3f3e;">refresh</button></a></div>
+                <div><a href=/B><button class=submitbutton style="float: right; background-color:#3f3f3e;">back</button></a></div>
                     <h1>logs</h1>
                     <form action=/form method=GET>
                                 <div>
@@ -529,16 +572,16 @@ void Task2code( void * pvParameters ) {
                                     <input type=submit class="submitbutton button1">
                                 </div>
                             </form>)===");
-                           client.write("<div><p>");
-                for (int i = 0; i<count;i++) {
+                client.write("<div><p>");
+                for (int i = 0; i < count; i++) {
                   logid idlog = loglist[i];
-                    client.print(idlog.timelog + "; " + idlog.id + "; " + idlog.feeder + "<br>");
-                  }
-                
-                client.write("</p></div></body>"); 
-                    
-                    
-                    
+                  client.print(idlog.timelog + "; " + idlog.id + "; " + idlog.feeder + "<br>");
+                }
+
+                client.write("</p></div></body>");
+
+
+
               }
             } else {    // if you got a newline, then clear currentLine:
               currentLine = "";
@@ -769,6 +812,33 @@ void Task2code( void * pvParameters ) {
             loggerspage = false;
           }
 
+          //download
+          if (currentLine.endsWith("GET /DL")) {
+            if (!SPIFFS.begin(true)) {
+              Serial.println("An Error has occurred while mounting SPIFFS");
+              return;
+            }
+
+            file = SPIFFS.open("/test.txt", FILE_WRITE);
+
+            if (!file) {
+              Serial.println("There was an error opening the file for writing");
+              return;
+            }
+            if (file.print("TEST")) {
+              Serial.println("File was written");
+            } else {
+              Serial.println("File write failed");
+            }
+
+
+            file.close();
+            downloadtrue = true;
+          }
+
+          //test
+
+
 
 
 
@@ -885,14 +955,14 @@ void removeZeros(byte nummer) {
    VV in webserver threshold instellen
    vvin webserver zeggen bv alles 1
 
-mooiere buttons,
-set time
-refresh button bij logs
-miss downloadbaar
-feeder open or closed -> eerst op het juiste zetten, en dan in de open/close terug op 0 zetten als die toch dicht moest
+  mooiere buttons,
+  set time
+  refresh button bij logs
+  miss downloadbaar
+  feeder open or closed -> eerst op het juiste zetten, en dan in de open/close terug op 0 zetten als die toch dicht moest
 
 
-   
+
 */
 
 void loop() {}
