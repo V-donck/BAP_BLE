@@ -1,5 +1,4 @@
 #include <ESP32Time.h>
-#include "SPIFFS.h"
 
 
 #include <Arduino.h>
@@ -41,8 +40,6 @@ boolean allowAllFood2 = false;
 boolean loggerspage = false;
 ESP32Time rtc;
 byte numberids;
-boolean downloadtrue;
-File file;
 
 
 struct logid {
@@ -422,7 +419,7 @@ void Task2code( void * pvParameters ) {
                 <head>
                   <title>SmartFeeder</title>
                 </head>)===");
-              if (!loggerspage & !downloadtrue) {
+              if (!loggerspage) {
                 client.write(R"===(
                 <body>
                 
@@ -537,29 +534,11 @@ void Task2code( void * pvParameters ) {
                 // break out of the while loop:
                 // break;// here was break
               }
-
-              else if (downloadtrue) {
-                Serial.print("downloadture !! ");
-                client.println();
-
-                while (file.available()) {
-                  Serial.print("reading");
-                  client.write(file.read());
-                }
-                downloadtrue = false;
-              }
               else // logerpage // here edit
               {
                 badInputError = false;
                 client.write(R"===(
-                <body>
-                <div><a href=/DL><button class style="float: right";=\"submitbutton\">download</button></a></div>
-
-
-
-<a href="/test.txt" download="test">downloasd
-</a>
-                
+                <body>                
                 <div><a href=/LP><button class=submitbutton style="float: right; background-color:#3f3f3e;">refresh</button></a></div>
                 <div><a href=/B><button class=submitbutton style="float: right; background-color:#3f3f3e;">back</button></a></div>
                     <h1>logs</h1>
@@ -809,32 +788,6 @@ void Task2code( void * pvParameters ) {
           if (currentLine.endsWith("GET /B")) {
             loggerspage = false;
           }
-
-          //download
-          if (currentLine.endsWith("GET /DL")) {
-            if (!SPIFFS.begin(true)) {
-              Serial.println("An Error has occurred while mounting SPIFFS");
-              return;
-            }
-
-            file = SPIFFS.open("/test.txt", FILE_WRITE);
-
-            if (!file) {
-              Serial.println("There was an error opening the file for writing");
-              return;
-            }
-            if (file.print("TEST")) {
-              Serial.println("File was written");
-            } else {
-              Serial.println("File write failed");
-            }
-
-
-            file.close();
-            downloadtrue = true;
-          }
-
-          //test
 
 
 
