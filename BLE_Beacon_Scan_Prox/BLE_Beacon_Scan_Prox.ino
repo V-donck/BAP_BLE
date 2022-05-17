@@ -40,6 +40,7 @@ boolean allowAllFood2 = false;
 boolean loggerspage = false;
 ESP32Time rtc;
 byte numberids;
+boolean timeset = false;
 
 
 struct logid {
@@ -423,27 +424,40 @@ void Task2code( void * pvParameters ) {
                   
                   <head>
                       <title>SmartFeeder</title>
-                  </head>
+                  </head> 
+                  <body>
                 )===");
               if (!loggerspage) {
+                if(!timeset){
                 client.write(R"===(
-                  <body>
-                      <form action=LP method=GET id=form1>
-                          <div>
-                              <input type="hidden" id="currentDateTime" name="currentDateTime">
-                  
-                          </div>
-                      </form>
-                      <button onclick=setttime() type="submit" form="form1" class=submitbutton
-                          style="float: right; background-color:#3f3f3e;">loggerpage</button>
-                      <script>
-                          function setttime() {
-                              var today = new Date();
-                              var dateTime = ('0' + today.getSeconds()).slice(-2) + '-' + ('0' + today.getMinutes()).slice(-2) + '-' + ('0' + today.getHours()).slice(-2) + '-' + ('0' + today.getDate()).slice(-2) + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
-                              document.getElementById("currentDateTime").value = dateTime;
-                          }
-                      </script>
+
+                 
+                    <form action=STI method=GET id=form1>
                       <div>
+                        <input type="hidden" id="currentDateTime" name="currentDateTime">
+                      </div>
+                    </form>
+                    <button hidden type="submit" form="form1" id="setTimeButton">setTimeButton</button>
+                    <script>
+                      var today = new Date();
+                      var dateTime = ('0' + today.getSeconds()).slice(-2) + '-' + ('0' + today.getMinutes()).slice(-2) + '-' + ('0' + today.getHours()).slice(-2) + '-' + ('0' + today.getDate()).slice(-2) + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + today.getFullYear();
+                      document.getElementById("currentDateTime").value = dateTime;
+                    </script>
+                  
+                    <script>
+                      window.onload = function () {
+                        var button = document.getElementById('setTimeButton');
+                        button.form.submit();
+                      }
+                    </script>
+                    )===");
+                    timeset = true;
+                }
+                client.write(R"===(
+                      <div>
+                          <a href= /LP>
+                          <button class=submitbutton style="float: right; background-color:#3f3f3e">loggerpage</button>
+                          </a>
                           <a href= />
                           <button class=submitbutton style="float: right; background-color:#3f3f3e">refresh</button>
                           </a>
@@ -481,7 +495,7 @@ void Task2code( void * pvParameters ) {
                                       </div>
                                   </form>
                               </div>
-                          </div>                  
+                          </div>
                     )===");
 
                 //table with all current id's
@@ -559,7 +573,6 @@ void Task2code( void * pvParameters ) {
               {
                 badInputError = false;
                 client.write(R"===(
-                  <body>
                       <div><a href=/LP><button class=submitbutton
                                   style="float: right; background-color:#3f3f3e;">refresh</button></a></div>
                       <div><a href=/B><button class=submitbutton style="float: right; background-color:#3f3f3e;">back</button></a>
@@ -797,13 +810,17 @@ void Task2code( void * pvParameters ) {
           }
 
           //loggerpage
-          if (currentLine.startsWith("GET /LP?currentDateTime")) {
+          if (currentLine.endsWith("GET /LP")) {
             loggerspage = true;
+            
+          }
+
+           //setTime
+          if(currentLine.startsWith("GET /STI?currentDateTime")) {
             String datestring = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
             Serial.println(datestring);
             Serial.println(datestring.substring(0, 2)); Serial.println(datestring.substring(3, 5)); Serial.println(datestring.substring(6, 8)); Serial.println(datestring.substring(9, 11).toInt()); Serial.println(datestring.substring(12, 14).toInt()); Serial.println(datestring.substring(15, 19).toInt());
             rtc.setTime(datestring.substring(0, 2).toInt(), datestring.substring(3, 5).toInt(), datestring.substring(6, 8).toInt(), datestring.substring(9, 11).toInt(), datestring.substring(12, 14).toInt(), datestring.substring(15, 19).toInt());
-
           }
 
           //back to normal
