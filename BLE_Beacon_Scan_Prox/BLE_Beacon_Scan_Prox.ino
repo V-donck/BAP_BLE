@@ -1,8 +1,4 @@
-#include <ESP32Time.h>
-
-
 #include <Arduino.h>
-
 #include <NimBLEDevice.h>
 #include <NimBLEAdvertisedDevice.h>
 #include "NimBLEBeacon.h"
@@ -10,7 +6,7 @@
 #include <WiFiClient.h>
 #include <WiFiAP.h>
 #include <ESP32Servo.h>
-
+#include <ESP32Time.h>
 
 // Constants
 int scanTime = 5; //In seconds
@@ -104,12 +100,14 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
               char * pEnd;
               receivedId = strtol(be, &pEnd, 16);
               Serial.println(receivedId);
+              //log id to loglist
               if (count < MAXLOGS) {
                 loglist[count] = {rtc.getTime("%d-%m-%Y, %H:%M:%S"), receivedId, 0};
                 count++;
                 numberids++;
                 Serial.println("logged 0");
               }
+              //check if id is in array
               if (checkArray(receivedId, 1)) {
                 food1Open = true;
               }
@@ -133,7 +131,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 
 
 void setup_ble() {
-  rtc.setTime(0, 0, 0, 1, 1, 2020);
+  rtc.setTime(0, 0, 0, 1, 1, 2020);// set initial time
   Serial.println("Scanning...");
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
@@ -144,6 +142,7 @@ void setup_ble() {
 }
 
 void setup_wifi() {
+  //create wifi Acces point
   Serial.println("setup Wifi-----------------");
   //WIFI
   Serial.println("Configuring access point...");
@@ -158,6 +157,7 @@ void setup_wifi() {
 void setup()
 {
   Serial.begin(115200);
+  //attach servo's to pins
   servo1.attach(12);
   servo2.attach(A0);
 
@@ -203,59 +203,59 @@ void Task1code( void * pvParameters ) {
     if (!(allowAllFood1 | allowAllFood2)) {// if no allowall
       // if one of them, then open it, otherwise close both
       if (!(food1Open && food2Open)) {
-        if (food1Open) {
+        if (food1Open) {// open 1
           servo1.write(openFood);
           servo2.write(closeFood);
           whichFeeder = 1;
           Serial.println("food1 open");
         }
-        else if (food2Open) {
+        else if (food2Open) {// open 2
           servo2.write(openFood);
           servo1.write(closeFood);
           Serial.println("food2 open");
           whichFeeder = 2;
         }
-        else {
+        else { // close both
           Serial.println("allebei gesloten");
           servo1.write(closeFood);
           servo2.write(closeFood);
         }
       }
-      else {
+      //ids of both lists in the neighborhood -> close both
+      else { // close both
         Serial.println("allebei moeten open, dus allebei gesloten");
         servo1.write(closeFood);
         servo2.write(closeFood);
       }
     }
     else if (allowAllFood1 & allowAllFood2) { // both all allowed
-      if (food1Open | food2Open | notFood1 | notFood2) { // animal in the neighborhood
+      if (food1Open | food2Open | notFood1 | notFood2) { // animal in the neighborhood -> open both
         servo1.write(openFood);
         servo2.write(openFood);
         Serial.println("food1 open");
         Serial.println("food2 open");
         Serial.println("both");
         whichFeeder = 3;
-
       }
-      else { // no animalin the neighborhood
+      else { // no animalin the neighborhood -> close both
         servo1.write(closeFood);
         servo2.write(closeFood);
         Serial.println("closed no animal in the neighborhood");
       }
     }
     else if (allowAllFood1) { // Food 1 allowed for all
-      if (food2Open & !notFood2) { // only food2
+      if (food2Open & !notFood2) { // only food2 -> open 2
         servo1.write(closeFood);
         servo2.write(openFood);
         Serial.println("open 2, terwijl 1 voor iedereen mag, maar enkel een food2 in de buurt");
         whichFeeder = 2;
       }
-      else if (food2Open | !(food1Open | notFood1)) { //there is an animal that must have food2 or no animal in the neighborhood
+      else if (food2Open | !(food1Open | notFood1)) { //there is an animal that must have food2 or no animal in the neighborhood-> close both
         servo1.write(closeFood);
         servo2.write(closeFood);
         Serial.println("allebei gesloten  there is an animal that must have food2 or no animal in the neighborhood");
       }
-      else { // only animals in Food1 or in no list
+      else { // only animals in Food1 or in no list -> open 1
         servo1.write(openFood);
         servo2.write(closeFood);
         Serial.println("food1 open");
@@ -263,25 +263,25 @@ void Task1code( void * pvParameters ) {
       }
     }
     else if (allowAllFood2) { // Food 2 allowed for all
-      if (food1Open & !notFood1) { // only Food1
+      if (food1Open & !notFood1) { // only Food1 -> open 1
         servo1.write(openFood);
         servo2.write(closeFood);
         Serial.println("food1 open, terwijl 2 voor iedereen openstaat, maar enkel animals van food1 aanwezig");
         whichFeeder = 1;
       }
-      else if (food1Open | !(food2Open | notFood2)) { //there is an animal that must have food1 or no animal in the neighborhood
+      else if (food1Open | !(food2Open | notFood2)) { //there is an animal that must have food1 or no animal in the neighborhood -> close both
         servo1.write(closeFood);
         servo2.write(closeFood);
         Serial.println("allebei gesloten there is an animal that must have food1 or no animal in the neighborhood ");
-
       }
-      else { // only animals in food2 or in no list
+      else { // only animals in food2 or in no list -> open 2
         servo1.write(closeFood);
         servo2.write(openFood);
         Serial.println("food2 open");
         whichFeeder = 2;
       }
     }
+    // write which feeder is open to the logs
     for (int i = 1; i < numberids + 1; i++) {
       loglist[count - i].feeder = whichFeeder;
       Serial.print("loged again + ");
@@ -304,7 +304,6 @@ void Task2code( void * pvParameters ) {
   boolean badInputError = false;
   //a infinite for loop that creates the webserver
   for (;;) {
-
     WiFiClient client = server.available();   // listen for incoming clients
     if (client) {                             // if you get a client,
       Serial.println("New Client.");           // print a message out the serial port
@@ -325,6 +324,8 @@ void Task2code( void * pvParameters ) {
               }
               client.println();
               // the content of the HTTP response follows the header:
+
+              
               //write style and head and text input fields
               client.write(
                 R"===(
@@ -428,10 +429,9 @@ void Task2code( void * pvParameters ) {
                   <body>
                 )===");
               if (!loggerspage) {
+                // if time is not set -> call script to set time
                 if(!timeset){
                 client.write(R"===(
-
-                 
                     <form action=STI method=GET id=form1>
                       <div>
                         <input type="hidden" id="currentDateTime" name="currentDateTime">
@@ -453,6 +453,7 @@ void Task2code( void * pvParameters ) {
                     )===");
                     timeset = true;
                 }
+                //print title, buttons and input fields
                 client.write(R"===(
                       <div>
                           <a href= /LP>
@@ -563,14 +564,13 @@ void Task2code( void * pvParameters ) {
 
                 badInputError = false;
 
-
+//weg
                 // The HTTP response ends with another blank line:
                 //client.println();// here was not comment
                 // break out of the while loop:
                 // break;// here was break
               }
-              else // logerpage // here edit
-              {
+              else{ // logerpage
                 badInputError = false;
                 client.write(R"===(
                       <div><a href=/LP><button class=submitbutton
@@ -609,7 +609,7 @@ void Task2code( void * pvParameters ) {
                 if (checkId(idlogger)) {
                   long idlong = idlogger.toInt();
                   if (idlong > 65535) {
-                    client.print("<script>alert(\"deze id is niet juist\");</script>");
+                    client.print("<script>alert(\"This id is wrong\");</script>");
                     badInputError = true;
                   }
                   else {
@@ -620,22 +620,22 @@ void Task2code( void * pvParameters ) {
                       Serial.println("added to list1");
                     }
                     else {
-                      client.println("<script>alert(\"deze id zit al in deze lijst\");</script>");
+                      client.println("<script>alert(\"This id is already in the list\");</script>");
                       badInputError = true;
                     }
                     if (checkArray(idInt, 2)) {
-                      client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
+                      client.print("<script>alert(\"This id is already present in the other list\");</script>");
                       badInputError = true;
                     }
                   }
                 }
                 else {
-                  client.print("<script>alert(\"deze id is niet juist\");</script>");
+                  client.print("<script>alert(\"This id is wrong\");</script>");
                   badInputError = true;
                 }
               }
               else {
-                client.print("<script>alert(\"Er zitten te veel id's in deze lijst\");</script>");
+                client.print("<script>alert(\"There are too much ids in this list\");</script>");
                 badInputError = true;
               }
             }
@@ -649,7 +649,7 @@ void Task2code( void * pvParameters ) {
                 if (checkId(idlogger)) {
                   long idlong = idlogger.toInt();
                   if (idlong > 65535) {
-                    client.print("<script>alert(\"deze id is niet juist\");</script>");
+                    client.print("<script>alert(\"This id is wrong\");</script>");
                     badInputError = true;
                   }
                   else {
@@ -660,22 +660,22 @@ void Task2code( void * pvParameters ) {
                       Serial.println("added to list2");
                     }
                     else {
-                      client.print("<script>alert(\"deze id zit al in deze lijst\");</script>");
+                      client.print("<script>alert(\"This id is already present in the other list\");</script>");
                       badInputError = true;
                     }
                     if (checkArray(idInt, 1)) {
-                      client.print("<script>alert(\"deze id zit al in de andere lijst\");</script>");
+                      client.print("<script>alert(\"This id is already present in the other list\");</script>");
                       badInputError = true;
                     }
                   }
                 }
                 else {
-                  client.print("<script>alert(\"deze id is niet juist\");</script>");
+                  client.print("<script>alert(\"This id is wrong\");</script>");
                   badInputError = true;
                 }
               }
               else {
-                client.print("<script>alert(\"Er zitten te veel id's in deze lijst\");</script>");
+                client.print("<script>alert(\"There are too much ids in this list\");</script>");
                 badInputError = true;
               }
             }
@@ -691,7 +691,7 @@ void Task2code( void * pvParameters ) {
               if (checkId(idlogger)) {
                 long idlong = idlogger.toInt();
                 if (idlong > 65535) {
-                  client.print("<script>alert(\"deze id is niet juist\");</script>");
+                  client.print("<script>alert(\"This id is wrong\");</script>");
                   badInputError = true;
                 }
                 else {
@@ -705,7 +705,7 @@ void Task2code( void * pvParameters ) {
                 }
               }
               else {
-                client.print("<script>alert(\"deze id is niet juist\");</script>");
+                client.print("<script>alert(\"This id is wrong\");</script>");
                 badInputError = true;
               }
             }
@@ -718,7 +718,7 @@ void Task2code( void * pvParameters ) {
               if (checkId(idlogger)) {
                 long idlong = idlogger.toInt();
                 if (idlong > 65535) {
-                  client.print("<script>alert(\"deze id is niet juist\");</script>");
+                  client.print("<script>alert(\"This id is wrong\");</script>");
                   badInputError = true;
                 }
                 else {
@@ -732,14 +732,14 @@ void Task2code( void * pvParameters ) {
                 }
               }
               else {
-                client.print("<script>alert(\"deze id is niet juist\");</script>");
+                client.print("<script>alert(\"This id is wrong\");</script>");
                 badInputError = true;
               }
             }
 
             // warning message that id is not in list
             if (!inlist & removeF) {
-              client.print("<script>alert(\"deze id zit niet in deze lijst\");</script>");
+              client.print("<script>alert(\"This id is not present in this list\");</script>");
               badInputError = true;
             }
 
@@ -751,7 +751,7 @@ void Task2code( void * pvParameters ) {
                 threshold = thresholdstring.toInt();
               }
               else {
-                client.print("<script>alert(\"deze threshold is niet juist\");</script>");
+                client.print("<script>alert(\"This threshold is wrong\");</script>");
                 badInputError = true;
               }
             }
@@ -832,10 +832,7 @@ void Task2code( void * pvParameters ) {
           if (currentLine.endsWith("GET /CL")) {
             count=0;
             numberids = 0;
-            
           }
-
-
 
 
           //end of HTTP page
@@ -856,7 +853,7 @@ void Task2code( void * pvParameters ) {
   }
 }
 
-
+//check if id is in array
 boolean checkArray(uint16_t id, int nummer) {
   if (nummer == 1) {
     for (int i = 0; i < index1; i++) {
@@ -890,6 +887,7 @@ boolean checkId(String s) {
   return true;
 }
 
+//check if the threshold is right
 boolean checkThreshold(String s) {
   if (s.charAt(0) != '-') {
     return false;
@@ -902,6 +900,7 @@ boolean checkThreshold(String s) {
   return true;
 }
 
+//remove the zeros from the list
 void removeZeros(byte nummer) {
   if (nummer == 0) {
     for (int i = 0; i < 2; i++) {
@@ -933,6 +932,7 @@ void removeZeros(byte nummer) {
 }
 
 
+//weg
 // to do
 /*
    VV melding als verwijder maar niet in lijst -> nu komen de eerste 2 lijnen er bij op die nog bij de header horen, .write werkt niet
