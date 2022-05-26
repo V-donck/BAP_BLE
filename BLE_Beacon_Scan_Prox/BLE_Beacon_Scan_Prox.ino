@@ -33,7 +33,7 @@ boolean notFood1 = false;
 boolean notFood2 = false;
 boolean allowAllFood1 = false;
 boolean allowAllFood2 = false;
-boolean loggerspage = false;
+boolean logspage = false;
 ESP32Time rtc;
 byte numberids;
 boolean timeset = false;
@@ -249,7 +249,7 @@ void Task1code( void * pvParameters ) {
         servo2.write(closeFood);
         //Serial.println("allebei gesloten  there is an animal that must have food2 or no animal in the neighborhood");
       }
-      else { // only animals in Food1 or in no list -> open 1
+      else { // only IDs in Food1 or in no list -> open 1
         servo1.write(openFood);
         servo2.write(closeFood);
         //Serial.println("food1 open");
@@ -260,7 +260,7 @@ void Task1code( void * pvParameters ) {
       if (food1Open & !notFood1) { // only Food1 -> open 1
         servo1.write(openFood);
         servo2.write(closeFood);
-        //Serial.println("food1 open, terwijl 2 voor iedereen openstaat, maar enkel animals van food1 aanwezig");
+        //Serial.println("food1 open, terwijl 2 voor iedereen openstaat, maar enkel IDs van food1 aanwezig");
         whichFeeder = 1;
       }
       else if (food1Open | !(food2Open | notFood2)) { //there is an animal that must have food1 or no animal in the neighborhood -> close both
@@ -268,7 +268,7 @@ void Task1code( void * pvParameters ) {
         servo2.write(closeFood);
         //Serial.println("allebei gesloten there is an animal that must have food1 or no animal in the neighborhood ");
       }
-      else { // only animals in food2 or in no list -> open 2
+      else { // only IDs in food2 or in no list -> open 2
         servo1.write(closeFood);
         servo2.write(openFood);
         //Serial.println("food2 open");
@@ -422,7 +422,7 @@ void Task2code( void * pvParameters ) {
                   </head> 
                   <body>
                 )===");
-              if (!loggerspage) {
+              if (!logspage) {
                 // if time is not set -> call script to set time
                 if (!timeset) {
                   client.write(R"===(
@@ -451,7 +451,7 @@ void Task2code( void * pvParameters ) {
                 client.write(R"===(
                       <div>
                           <a href= /LP>
-                          <button class=submitbutton style="float: right; background-color:#3f3f3e">loggerpage</button>
+                          <button class=submitbutton style="float: right; background-color:#3f3f3e">logs</button>
                           </a>
                           <a href= />
                           <button class=submitbutton style="float: right; background-color:#3f3f3e">refresh</button>
@@ -499,7 +499,7 @@ void Task2code( void * pvParameters ) {
                 if (allowAllFood1) {//check if allowAll is enabled for food1
                   client.write("<p> (all allowed");
                   if (!allowAllFood2) {
-                    client.write(" exept the animals that are in Food2)</p><br>");
+                    client.write(" exept the IDs that are in Food2)</p><br>");
                   }
                   else {
                     client.write(")</p><br>");
@@ -517,7 +517,7 @@ void Task2code( void * pvParameters ) {
                 if (allowAllFood2) {//check if allowAll is enabled for food2
                   client.write("<p> (all allowed");
                   if (!allowAllFood1) {
-                    client.write(" exept the animals that are in Food1)</p><br>");
+                    client.write(" exept the IDs that are in Food1)</p><br>");
                   }
                   else {
                     client.write(")</p><br>");
@@ -535,17 +535,17 @@ void Task2code( void * pvParameters ) {
                 //buttons
                 client.print("<div class=column><a href=/CF1><button class=\"button button1\">Clear Food1</button></a>");
                 if (allowAllFood1) {
-                  client.write("<a href=/AAF1><button class=\"button button1\">do not allow anymore all to food1 exept the animals in food2</button></a></div>");
+                  client.write("<a href=/AAF1><button class=\"button button1\">do not allow anymore all to food1 exept the IDs in food2</button></a></div>");
                 }
                 else {
-                  client.write("<a href=AAF1><button class=\"button button1\">allow all to food1 exept the animals in food2</button></a></div>");
+                  client.write("<a href=AAF1><button class=\"button button1\">allow all to food1 exept the IDs in food2</button></a></div>");
                 }
                 client.write("<div class=column><a href=/CF2><button class=\"button button2\">Clear Food2</button></a>");
                 if (allowAllFood2) {
-                  client.write("<a href=/AAF2><button class=\"button button2\">do not allow anymore all to food2 exept the animals infood1</button></a></div>");
+                  client.write("<a href=/AAF2><button class=\"button button2\">do not allow anymore all to food2 exept the IDs in food1</button></a></div>");
                 }
                 else {
-                  client.write("<a href=/AAF2><button class=\"button button2\">allow all to food2 exept the animals infood1</button></a></div>");
+                  client.write("<a href=/AAF2><button class=\"button button2\">allow all to food2 exept the IDs infood1</button></a></div>");
                 }
                 client.write("</div>");
 
@@ -788,9 +788,9 @@ void Task2code( void * pvParameters ) {
             allowAllFood2 = not(allowAllFood2);
           }
 
-          //loggerpage
+          //logspage
           if (currentLine.endsWith("GET /LP")) {
-            loggerspage = true;
+            logspage = true;
 
           }
 
@@ -802,7 +802,7 @@ void Task2code( void * pvParameters ) {
 
           //back to normal
           if (currentLine.endsWith("GET /B")) {
-            loggerspage = false;
+            logspage = false;
           }
 
           //clear logs
