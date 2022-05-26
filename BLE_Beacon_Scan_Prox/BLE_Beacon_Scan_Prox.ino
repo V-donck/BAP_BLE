@@ -79,7 +79,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
             Serial.println(advertisedDevice->getName().c_str());
             Serial.println("");
             Serial.println("found Prox!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            Serial.println("");
             Serial.println(RSSi);
             Serial.println("rrsi");
             if (advertisedDevice->haveManufacturerData())
@@ -95,7 +94,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
               sprintf(le, "%X", cManufacturerData[2]);
               sprintf(be, "%X", cManufacturerData[3]);
               strcat(be, le);
-              Serial.println(be);
               uint16_t receivedId;
               char * pEnd;
               receivedId = strtol(be, &pEnd, 16);
@@ -105,7 +103,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 loglist[count] = {rtc.getTime("%d-%m-%Y, %H:%M:%S"), receivedId, 0};
                 count++;
                 numberids++;
-                Serial.println("logged 0");
               }
               //check if id is in array
               if (checkArray(receivedId, 1)) {
@@ -185,8 +182,6 @@ void setup()
 
 //Task1code: Handle BLE
 void Task1code( void * pvParameters ) {
-  // here led weg
-  pinMode(LED_BUILTIN, OUTPUT);
   Serial.print("Task1 running on core ");
   Serial.println(xPortGetCoreID());
   setup_ble();
@@ -199,7 +194,6 @@ void Task1code( void * pvParameters ) {
     Serial.println(foundDevices.getCount());
     Serial.println("Scan done!");
     byte whichFeeder = 0;
-
     if (!(allowAllFood1 | allowAllFood2)) {// if no allowall
       // if one of them, then open it, otherwise close both
       if (!(food1Open && food2Open)) {
@@ -325,7 +319,7 @@ void Task2code( void * pvParameters ) {
               client.println();
               // the content of the HTTP response follows the header:
 
-              
+
               //write style and head and text input fields
               client.write(
                 R"===(
@@ -430,8 +424,8 @@ void Task2code( void * pvParameters ) {
                 )===");
               if (!loggerspage) {
                 // if time is not set -> call script to set time
-                if(!timeset){
-                client.write(R"===(
+                if (!timeset) {
+                  client.write(R"===(
                     <form action=STI method=GET id=form1>
                       <div>
                         <input type="hidden" id="currentDateTime" name="currentDateTime">
@@ -451,7 +445,7 @@ void Task2code( void * pvParameters ) {
                       }
                     </script>
                     )===");
-                    timeset = true;
+                  timeset = true;
                 }
                 //print title, buttons and input fields
                 client.write(R"===(
@@ -564,13 +558,13 @@ void Task2code( void * pvParameters ) {
 
                 badInputError = false;
 
-//weg
+                //weg
                 // The HTTP response ends with another blank line:
                 //client.println();// here was not comment
                 // break out of the while loop:
                 // break;// here was break
               }
-              else{ // logerpage
+              else { // logerpage
                 badInputError = false;
                 client.write(R"===(
                       <div><a href=/LP><button class=submitbutton
@@ -766,21 +760,6 @@ void Task2code( void * pvParameters ) {
             if (index2 > LISTLENGTH - 2 || index2 == LISTLENGTH / 2) {
               removeZeros(2);
             }
-
-            // print in serialmonitor
-            Serial.println("lijst1:");
-            for (int i = 0; i < index1; i++) {
-              Serial.print(lijst1[i]);
-              Serial.print(", ");
-            }
-            Serial.println("");
-
-            Serial.println("lijst2:");
-            for (int i = 0; i < index2; i++) {
-              Serial.print(lijst2[i]);
-              Serial.print(", ");
-            }
-            Serial.println(" ");
           }
 
           //clear food 1
@@ -812,14 +791,12 @@ void Task2code( void * pvParameters ) {
           //loggerpage
           if (currentLine.endsWith("GET /LP")) {
             loggerspage = true;
-            
+
           }
 
-           //setTime
-          if(currentLine.startsWith("GET /STI?currentDateTime")) {
+          //setTime
+          if (currentLine.startsWith("GET /STI?currentDateTime")) {
             String datestring = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
-            Serial.println(datestring);
-            Serial.println(datestring.substring(0, 2)); Serial.println(datestring.substring(3, 5)); Serial.println(datestring.substring(6, 8)); Serial.println(datestring.substring(9, 11).toInt()); Serial.println(datestring.substring(12, 14).toInt()); Serial.println(datestring.substring(15, 19).toInt());
             rtc.setTime(datestring.substring(0, 2).toInt(), datestring.substring(3, 5).toInt(), datestring.substring(6, 8).toInt(), datestring.substring(9, 11).toInt(), datestring.substring(12, 14).toInt(), datestring.substring(15, 19).toInt());
           }
 
@@ -830,7 +807,7 @@ void Task2code( void * pvParameters ) {
 
           //clear logs
           if (currentLine.endsWith("GET /CL")) {
-            count=0;
+            count = 0;
             numberids = 0;
           }
 
