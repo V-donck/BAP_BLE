@@ -75,12 +75,12 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
         if (RSSi >= threshold) {
           std::string pr = "Prox";
           if (namedevice == pr) {
-            Serial.print("Device name: ");
-            Serial.println(advertisedDevice->getName().c_str());
-            Serial.println("");
-            Serial.println("found Prox!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            Serial.println(RSSi);
-            Serial.println("rrsi");
+            //Serial.print("Device name: ");
+            //Serial.println(advertisedDevice->getName().c_str());
+            //Serial.println("");
+            //Serial.println("found Prox!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            //Serial.println(RSSi);
+            //Serial.println("rrsi");
             if (advertisedDevice->haveManufacturerData())
             {
               std::string strManufacturerData = advertisedDevice->getManufacturerData();
@@ -88,16 +88,16 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
               char be[8];
               char le[4];
               strManufacturerData.copy((char *)cManufacturerData, strManufacturerData.length(), 0);
-              Serial.printf("strManufacturerData: %d ", strManufacturerData.length());
-              Serial.printf("\n");
-              Serial.println(cManufacturerData[2]);
+              //Serial.printf("strManufacturerData: %d ", strManufacturerData.length());
+              //Serial.printf("\n");
+              //Serial.println(cManufacturerData[2]);
               sprintf(le, "%X", cManufacturerData[2]);
               sprintf(be, "%X", cManufacturerData[3]);
               strcat(be, le);
               uint16_t receivedId;
               char * pEnd;
               receivedId = strtol(be, &pEnd, 16);
-              Serial.println(receivedId);
+              //Serial.println(receivedId);
               //log id to loglist
               if (count < MAXLOGS) {
                 loglist[count] = {rtc.getTime("%d-%m-%Y, %H:%M:%S"), receivedId, 0};
@@ -129,7 +129,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 
 void setup_ble() {
   rtc.setTime(0, 0, 0, 1, 1, 2020);// set initial time
-  Serial.println("Scanning...");
+  //Serial.println("Scanning...");
   BLEDevice::init("");
   pBLEScan = BLEDevice::getScan(); //create new scan
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
@@ -140,20 +140,20 @@ void setup_ble() {
 
 void setup_wifi() {
   //create wifi Acces point
-  Serial.println("setup Wifi-----------------");
+  //Serial.println("setup Wifi-----------------");
   //WIFI
-  Serial.println("Configuring access point...");
+  //Serial.println("Configuring access point...");
   WiFi.softAP(ssid, password);
   IPAddress myIP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
+  //Serial.print("AP IP address: ");
+  //Serial.println(myIP);
   server.begin();
-  Serial.println("Server started");
+  //Serial.println("Server started");
 }
 
 void setup()
 {
-  Serial.begin(115200);
+  //Serial.begin(115200);
   //attach servo's to pins
   servo1.attach(12);
   servo2.attach(A0);
@@ -182,17 +182,17 @@ void setup()
 
 //Task1code: Handle BLE
 void Task1code( void * pvParameters ) {
-  Serial.print("Task1 running on core ");
-  Serial.println(xPortGetCoreID());
+  //Serial.print("Task1 running on core ");
+  //Serial.println(xPortGetCoreID());
   setup_ble();
 
   // this is an infinite loop that scans for BLE devices
   for (;;) {
     numberids = 0;
     BLEScanResults foundDevices = pBLEScan->start(scanTime, false);
-    Serial.print("Devices found: ");
-    Serial.println(foundDevices.getCount());
-    Serial.println("Scan done!");
+    //Serial.print("Devices found: ");
+    //Serial.println(foundDevices.getCount());
+    //Serial.println("Scan done!");
     byte whichFeeder = 0;
     if (!(allowAllFood1 | allowAllFood2)) {// if no allowall
       // if one of them, then open it, otherwise close both
@@ -201,23 +201,23 @@ void Task1code( void * pvParameters ) {
           servo1.write(openFood);
           servo2.write(closeFood);
           whichFeeder = 1;
-          Serial.println("food1 open");
+          //Serial.println("food1 open");
         }
         else if (food2Open) {// open 2
           servo2.write(openFood);
           servo1.write(closeFood);
-          Serial.println("food2 open");
+          //Serial.println("food2 open");
           whichFeeder = 2;
         }
         else { // close both
-          Serial.println("allebei gesloten");
+          //Serial.println("allebei gesloten");
           servo1.write(closeFood);
           servo2.write(closeFood);
         }
       }
       //ids of both lists in the neighborhood -> close both
       else { // close both
-        Serial.println("allebei moeten open, dus allebei gesloten");
+        //Serial.println("allebei moeten open, dus allebei gesloten");
         servo1.write(closeFood);
         servo2.write(closeFood);
       }
@@ -226,33 +226,33 @@ void Task1code( void * pvParameters ) {
       if (food1Open | food2Open | notFood1 | notFood2) { // animal in the neighborhood -> open both
         servo1.write(openFood);
         servo2.write(openFood);
-        Serial.println("food1 open");
-        Serial.println("food2 open");
-        Serial.println("both");
+        //Serial.println("food1 open");
+        //Serial.println("food2 open");
+        //Serial.println("both");
         whichFeeder = 3;
       }
       else { // no animalin the neighborhood -> close both
         servo1.write(closeFood);
         servo2.write(closeFood);
-        Serial.println("closed no animal in the neighborhood");
+        //Serial.println("closed no animal in the neighborhood");
       }
     }
     else if (allowAllFood1) { // Food 1 allowed for all
       if (food2Open & !notFood2) { // only food2 -> open 2
         servo1.write(closeFood);
         servo2.write(openFood);
-        Serial.println("open 2, terwijl 1 voor iedereen mag, maar enkel een food2 in de buurt");
+        //Serial.println("open 2, terwijl 1 voor iedereen mag, maar enkel een food2 in de buurt");
         whichFeeder = 2;
       }
       else if (food2Open | !(food1Open | notFood1)) { //there is an animal that must have food2 or no animal in the neighborhood-> close both
         servo1.write(closeFood);
         servo2.write(closeFood);
-        Serial.println("allebei gesloten  there is an animal that must have food2 or no animal in the neighborhood");
+        //Serial.println("allebei gesloten  there is an animal that must have food2 or no animal in the neighborhood");
       }
       else { // only animals in Food1 or in no list -> open 1
         servo1.write(openFood);
         servo2.write(closeFood);
-        Serial.println("food1 open");
+        //Serial.println("food1 open");
         whichFeeder = 1;
       }
     }
@@ -260,26 +260,26 @@ void Task1code( void * pvParameters ) {
       if (food1Open & !notFood1) { // only Food1 -> open 1
         servo1.write(openFood);
         servo2.write(closeFood);
-        Serial.println("food1 open, terwijl 2 voor iedereen openstaat, maar enkel animals van food1 aanwezig");
+        //Serial.println("food1 open, terwijl 2 voor iedereen openstaat, maar enkel animals van food1 aanwezig");
         whichFeeder = 1;
       }
       else if (food1Open | !(food2Open | notFood2)) { //there is an animal that must have food1 or no animal in the neighborhood -> close both
         servo1.write(closeFood);
         servo2.write(closeFood);
-        Serial.println("allebei gesloten there is an animal that must have food1 or no animal in the neighborhood ");
+        //Serial.println("allebei gesloten there is an animal that must have food1 or no animal in the neighborhood ");
       }
       else { // only animals in food2 or in no list -> open 2
         servo1.write(closeFood);
         servo2.write(openFood);
-        Serial.println("food2 open");
+        //Serial.println("food2 open");
         whichFeeder = 2;
       }
     }
     // write which feeder is open to the logs
     for (int i = 1; i < numberids + 1; i++) {
       loglist[count - i].feeder = whichFeeder;
-      Serial.print("loged again + ");
-      Serial.println(whichFeeder);
+      //Serial.print("loged again + ");
+      //Serial.println(whichFeeder);
     }
     food1Open = false;
     food2Open = false;
@@ -292,15 +292,15 @@ void Task1code( void * pvParameters ) {
 
 //Task2code: Handle WiFi
 void Task2code( void * pvParameters ) {
-  Serial.print("Task2 running on core ");
-  Serial.println(xPortGetCoreID());
+  //Serial.print("Task2 running on core ");
+  //Serial.println(xPortGetCoreID());
   setup_wifi();
   boolean badInputError = false;
   //a infinite for loop that creates the webserver
   for (;;) {
     WiFiClient client = server.available();   // listen for incoming clients
     if (client) {                             // if you get a client,
-      Serial.println("New Client.");           // print a message out the serial port
+      //Serial.println("New Client.");           // print a message out the serial port
       String currentLine = "";                // make a String to hold incoming data from the client
       while (client.connected()) {            // loop while the client's connected
         if (client.available()) {             // if there's bytes to read from the client,
@@ -611,7 +611,7 @@ void Task2code( void * pvParameters ) {
                     if (!checkArray(idInt, 1)) {
                       lijst1[index1] = idInt;
                       index1++;
-                      Serial.println("added to list1");
+                      //Serial.println("added to list1");
                     }
                     else {
                       client.println("<script>alert(\"This id is already in the list\");</script>");
@@ -639,7 +639,7 @@ void Task2code( void * pvParameters ) {
             if (currentLine.startsWith("GET /form?AF2")) {
               if (index2 < LISTLENGTH - 1) {
                 String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
-                Serial.println(idlogger);
+                //Serial.println(idlogger);
                 if (checkId(idlogger)) {
                   long idlong = idlogger.toInt();
                   if (idlong > 65535) {
@@ -651,7 +651,7 @@ void Task2code( void * pvParameters ) {
                     if (!checkArray(idInt, 2)) {
                       lijst2[index2] = idInt;
                       index2++;
-                      Serial.println("added to list2");
+                      //Serial.println("added to list2");
                     }
                     else {
                       client.print("<script>alert(\"This id is already present in the other list\");</script>");
@@ -681,7 +681,7 @@ void Task2code( void * pvParameters ) {
             if (currentLine.startsWith("GET /form?RF1")) {
               removeF = true;
               String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
-              Serial.println(idlogger);
+              //Serial.println(idlogger);
               if (checkId(idlogger)) {
                 long idlong = idlogger.toInt();
                 if (idlong > 65535) {
@@ -708,7 +708,7 @@ void Task2code( void * pvParameters ) {
             if (currentLine.startsWith("GET /form?RF2")) {
               removeF = true;
               String idlogger = currentLine.substring(currentLine.indexOf('=') + 1, currentLine.indexOf(' ', currentLine.indexOf('=')));
-              Serial.println(idlogger);
+              //Serial.println(idlogger);
               if (checkId(idlogger)) {
                 long idlong = idlogger.toInt();
                 if (idlong > 65535) {
@@ -825,7 +825,7 @@ void Task2code( void * pvParameters ) {
       }
       // close the connection:
       client.stop();
-      Serial.println("Client Disconnected.");
+      //Serial.println("Client Disconnected.");
     }
   }
 }
