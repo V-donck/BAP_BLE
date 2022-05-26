@@ -545,7 +545,7 @@ void Task2code( void * pvParameters ) {
                   client.write("<a href=/AAF2><button class=\"button button2\">do not allow anymore all to food2 exept the IDs in food1</button></a></div>");
                 }
                 else {
-                  client.write("<a href=/AAF2><button class=\"button button2\">allow all to food2 exept the IDs infood1</button></a></div>");
+                  client.write("<a href=/AAF2><button class=\"button button2\">allow all to food2 exept the IDs in food1</button></a></div>");
                 }
                 client.write("</div>");
 
